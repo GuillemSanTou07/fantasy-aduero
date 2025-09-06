@@ -12,7 +12,7 @@ type Body = {
   botField?: string;
 };
 
-// Mapa de jugadoras
+// ====== Datos de jugadoras ======
 const PLAYERS = new Map<number, string>([
   [1, "Ari Rodríguez"], [2, "Paula Díaz"], [3, "Ana García"], [4, "Ana Fernández"],
   [5, "Nata Martín"], [6, "Celia Huon"], [7, "Paula Escola"], [8, "Judith Antón"],
@@ -20,97 +20,68 @@ const PLAYERS = new Map<number, string>([
   [13, "Jasmine Sayagués"], [14, "Alba Muñiz"],
 ]);
 
-// ====== Texto plano (para clientes que no renderizan HTML) ======
-function buildSummaryText(b: Body) {
-  const order: Role[] = ["DL", "MC", "DF", "PT"]; // de arriba a abajo
-  const roleLines = order.map((r) => {
-    const items = (b.lineup[r] || [])
-      .map((id) => `- ${id ? PLAYERS.get(id) || "—" : "—"}`)
-      .join("\n");
-    return `${r}:\n${items}`;
-  }).join("\n\n");
-  const cap = b.captainId ? PLAYERS.get(b.captainId) : "—";
+// ====== Helpers comunes ======
+const roleOrder: Role[] = ["DL", "MC", "DF", "PT"]; // de arriba a abajo (campo)
+const roleColor = (r: Role) =>
+  r === "PT" ? "#f59e0b" : r === "DF" ? "#3b82f6" : r === "MC" ? "#10b981" : "#ef4444";
 
-  return `Fantasy – Amigos del Duero · Confirmación de envío
-
-Formación: ${b.formation}
-
-${roleLines}
-
-Capitana: ${cap}
-
-📢 Resultados y clasificación: Instagram @fansamigosdelduero
-ℹ️ Regla: un equipo por jornada. Si envías varios con el mismo nombre, cuenta solo el último.
-
-Participante: ${b.participantName} <${b.participantEmail}>`;
-}
-
-// ====== HTML “mini-campo” con líneas DL–MC–DF–PT ======
-function buildSummaryHtml(b: Body) {
-  const cap = b.captainId ? PLAYERS.get(b.captainId) : "—";
-  const roleColor = (r: Role) =>
-    r === "PT" ? "#f59e0b" : r === "DF" ? "#3b82f6" : r === "MC" ? "#10b981" : "#ef4444";
-  const order: Role[] = ["DL", "MC", "DF", "PT"]; // arriba->abajo como en el campo
-
-  // Tarjeta de jugadora “tipo app”
-  const card = (role: Role, name: string, isCaptain: boolean) => `
+function card(role: Role, name: string, isCaptain: boolean) {
+  // Tarjeta limpia: badge de posición + nombre. Badge "C" arriba derecha si es capitana.
+  return `
     <div style="
       display:inline-block;min-width:120px;max-width:180px;
       background:#ffffff;border-radius:12px;border:2px solid ${roleColor(role)};
-      box-shadow:0 2px 6px rgba(0,0,0,.08);padding:10px;margin:6px;text-align:left;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      box-shadow:0 2px 6px rgba(0,0,0,.08);padding:10px;margin:6px;text-align:left;position:relative;">
+      <div style="display:flex;align-items:center;gap:8px;">
         <span style="
           display:inline-flex;align-items:center;justify-content:center;
           width:24px;height:24px;border-radius:999px;color:#fff;font-size:12px;font-weight:900;
           background:${roleColor(role)};">${role}</span>
-        <span style="font-size:12px;font-weight:800;opacity:.7">${role}</span>
-      </div>
-      <div style="position:relative;">
-        <div style="font-size:15px;font-weight:700;line-height:1.2;">${name}</div>
-        ${
-          isCaptain
-            ? `<span style="
-                 position:absolute;top:-10px;right:-10px;
-                 width:24px;height:24px;border-radius:999px;
-                 background:#fde68a;border:2px solid #f59e0b;color:#92400e;
-                 font-size:12px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;">
-                 C
-               </span>`
-            : ""
-        }
+        <span style="font-size:15px;font-weight:700;line-height:1.2;">${name}</span>
       </div>
       ${
         isCaptain
-          ? `<div style="margin-top:6px;">
-               <span style="font-size:11px;font-weight:800;padding:2px 6px;border-radius:999px;
-               background:#fde68a;border:1px solid #f59e0b;color:#92400e;">CAPITANA</span>
-             </div>`
+          ? `<span style="
+               position:absolute;top:-10px;right:-10px;
+               width:24px;height:24px;border-radius:999px;
+               background:#fde68a;border:2px solid #f59e0b;color:#92400e;
+               font-size:12px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;">C</span>`
           : ""
       }
     </div>
   `;
+}
 
-  // Filas por línea de juego
-  const rows = order.map((role) => {
-    const ids = b.lineup[role] || [];
-    const cells = ids
-      .map((id) =>
-        id
-          ? card(role, PLAYERS.get(id) || "—", id === b.captainId)
-          : `<div style="display:inline-block;min-width:120px;max-width:180px;
-                      border:2px dashed rgba(255,255,255,.85);border-radius:12px;color:#fff;
-                      padding:10px;margin:6px;text-align:center;">Añadir</div>`
-      )
-      .join("");
-    return `
-      <tr>
-        <td style="padding:10px;">
-          <div style="text-align:center;">${cells}</div>
-        </td>
-      </tr>
-    `;
-  }).join("");
+function lineupRowsHTML(b: Body) {
+  // Renderiza filas DL–MC–DF–PT con las tarjetas centradas por fila
+  return roleOrder
+    .map((role) => {
+      const ids = b.lineup[role] || [];
+      const cells = ids
+        .map((id) =>
+          id
+            ? card(role, PLAYERS.get(id) || "—", id === b.captainId!)
+            : `<div style="display:inline-block;min-width:120px;max-width:180px;
+                 border:2px dashed rgba(255,255,255,.85);border-radius:12px;color:#fff;
+                 padding:10px;margin:6px;text-align:center;">—</div>`
+        )
+        .join("");
+      return `
+        <tr>
+          <td style="padding:10px;">
+            <div style="text-align:center;">${cells}</div>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+}
 
+// ====== VERSIONES DE EMAIL ======
+
+// Participante: HTML estético + bloque Instagram/reglas. Sin repetir “Capitana” abajo.
+function buildParticipantHtml(b: Body) {
+  const rows = lineupRowsHTML(b);
   return `<!doctype html>
 <html>
   <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#111827;background:#f3f4f6;padding:24px;">
@@ -124,7 +95,6 @@ function buildSummaryHtml(b: Body) {
         <p style="margin:0 0 12px;">¡Hola <strong>${b.participantName}</strong>! 🎉</p>
         <p style="margin:0 0 12px;">Tu equipo se ha registrado correctamente. Formación <strong>${b.formation}</strong>:</p>
 
-        <!-- Mini campo -->
         <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background:linear-gradient(#15803d,#065f46);border-radius:16px;">
           <tbody>
             <tr>
@@ -137,14 +107,6 @@ function buildSummaryHtml(b: Body) {
               </td>
             </tr>
           </tbody>
-        </table>
-
-        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:14px;">
-          <tr>
-            <td style="padding:10px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">
-              <strong>Capitana:</strong> ${cap}
-            </td>
-          </tr>
         </table>
 
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin-top:16px;">
@@ -161,6 +123,73 @@ function buildSummaryHtml(b: Body) {
 </html>`;
 }
 
+// Participante: texto plano (fallback)
+function buildParticipantText(b: Body) {
+  const roleLines = roleOrder
+    .map((r) => {
+      const items = (b.lineup[r] || []).map((id) => `- ${id ? PLAYERS.get(id) || "—" : "—"}`).join("\n");
+      return `${r}:\n${items}`;
+    })
+    .join("\n\n");
+  return `Fantasy – Amigos del Duero · Confirmación de envío
+
+Formación: ${b.formation}
+
+${roleLines}
+
+Resultados y clasificación: Instagram @fansamigosdelduero
+Regla: un equipo por jornada (si envías varios con el mismo nombre, cuenta el último).`;
+}
+
+// Organización: SOLO alineación + nombre/email (sin extras)
+function buildOrgHtml(b: Body) {
+  const rows = lineupRowsHTML(b);
+  return `<!doctype html>
+<html>
+  <body style="font-family:Arial,Helvetica,sans-serif;line-height:1.6;color:#111827;background:#f8fafc;padding:16px;">
+    <div style="max-width:680px;margin:auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+      <div style="background:#0f172a;color:#fff;padding:14px 16px;">
+        <h2 style="margin:0;font-size:18px;">Fantasy – Amigos del Duero · Nuevo equipo</h2>
+      </div>
+      <div style="padding:16px;">
+        <p style="margin:0 0 8px;"><strong>Participante:</strong> ${b.participantName} &lt;${b.participantEmail}&gt;</p>
+        <p style="margin:0 0 8px;"><strong>Formación:</strong> ${b.formation}</p>
+
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background:linear-gradient(#15803d,#065f46);border-radius:12px;">
+          <tbody>
+            <tr>
+              <td style="padding:8px 12px;">
+                <div style="border:2px solid rgba(255,255,255,.35);border-radius:10px;padding:8px;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                    ${rows}
+                  </table>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>`;
+}
+
+function buildOrgText(b: Body) {
+  const roleLines = roleOrder
+    .map((r) => {
+      const items = (b.lineup[r] || []).map((id) => `- ${id ? PLAYERS.get(id) || "—" : "—"}`).join("\n");
+      return `${r}:\n${items}`;
+    })
+    .join("\n\n");
+  return `Fantasy – Amigos del Duero · Nuevo equipo
+
+Participante: ${b.participantName} <${b.participantEmail}>
+Formación: ${b.formation}
+
+${roleLines}`;
+}
+
+// ====== Handler API ======
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
 
@@ -177,7 +206,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (botField && botField.trim() !== "")
     return res.status(200).json({ ok: true, skipped: "honeypot" });
 
-  // Validaciones básicas
+  // Validaciones
   if (!formation || !lineup || !participantName || !participantEmail)
     return res.status(400).json({ ok: false, error: "Campos obligatorios faltan" });
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(participantEmail);
@@ -197,8 +226,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     participantEmail,
   };
 
-  const text = buildSummaryText(payload);
-  const html = buildSummaryHtml(payload);
+  const participantText = buildParticipantText(payload);
+  const participantHtml = buildParticipantHtml(payload);
+  const orgText = buildOrgText(payload);
+  const orgHtml = buildOrgHtml(payload);
 
   // --- SendGrid ---
   const apiKey = process.env.SENDGRID_API_KEY;
@@ -209,23 +240,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const FROM = "info@fantasyaduero.es";
 
   try {
-    // 1) Mail a la organización
+    // 1) Email a la organización (solo lo esencial)
     const mailToOrg = sgMail.send({
       to: ORG_TO,
       from: FROM,
-      subject: "Fantasy – Amigos del Duero · Nuevo equipo enviado",
-      text,
-      html,
+      subject: "Fantasy – Amigos del Duero · Nuevo equipo",
+      text: orgText,
+      html: orgHtml,
       replyTo: participantEmail,
     });
 
-    // 2) Mail de confirmación al participante
+    // 2) Email de confirmación al participante (estético, con reglas e Instagram)
     const mailToParticipant = sgMail.send({
       to: participantEmail,
       from: FROM,
       subject: "✅ Fantasy – Amigos del Duero · Hemos recibido tu equipo",
-      text,
-      html,
+      text: participantText,
+      html: participantHtml,
     });
 
     await Promise.all([mailToOrg, mailToParticipant]);
