@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const text = buildSummaryText({ formation, lineup, captainId, participantName, participantEmail, botField });
 
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const to = process.env.MAIL_TO || "08guillem80@gmail.com";
+  const to = process.env.MAIL_TO || "fantasyamigosdelduero@gmail.com";
   const from = process.env.MAIL_FROM || "no-reply@example.com"; // Debe ser un dominio verificado en Resend
 
   try {
