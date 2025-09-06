@@ -1,508 +1,238 @@
-import React from "react";
-
-// ===== App simple con selección en CAMPO (Next.js + TS) =====
-// - Sin mercado, sin totw, sin puntuaciones
-// - Selección libre por posición (PT/DF/MC/DL)
-// - Capitana integrada en el campo (botón "C")
-// - Envío por email a backend /api/submit (24/7)
+// pages/index.tsx
+import React, { useState } from "react";
 
 type Role = "PT" | "DF" | "MC" | "DL";
-
 const POS: Role[] = ["PT", "DF", "MC", "DL"];
-const POS_COLORS: Record<Role, string> = { PT: "#f59e0b", DF: "#3b82f6", MC: "#10b981", DL: "#ef4444" }; // Amarillo, Azul, Verde, Rojo
 const FORMATIONS = [
-  "0-1-1-3",
-  "0-1-2-2",
-  "0-1-3-1",
-  "0-2-1-2",
-  "0-2-2-1",
-  "0-3-1-1",
-  "1-1-1-2",
-  "1-1-2-1",
-  "1-2-1-1",
-] as const;
-const EMAIL_TO = process.env.NEXT_PUBLIC_MAIL_TO || "08guillem80@gmail.com";
-
-type Player = { id: number; name: string; roles: Role[] };
-
-const PLAYERS: Player[] = [
-  { id: 1, name: "Ari Rodríguez", roles: ["DL"] },
-  { id: 2, name: "Paula Díaz", roles: ["MC", "DF"] },
-  { id: 3, name: "Ana García", roles: ["DL"] },
-  { id: 4, name: "Ana Fernández", roles: ["DF"] },
-  { id: 5, name: "Nata Martín", roles: ["MC"] },
-  { id: 6, name: "Celia Huon", roles: ["DL", "MC"] },
-  { id: 7, name: "Paula Escola", roles: ["DF"] },
-  { id: 8, name: "Judith Antón", roles: ["DF"] },
-  { id: 9, name: "Noemi Antón", roles: ["DF"] },
-  { id: 10, name: "María Alonso", roles: ["PT"] },
-  { id: 11, name: "Yaiza García", roles: ["DL"] },
-  { id: 12, name: "Andrea Hernández", roles: ["DF", "MC", "DL"] },
-  { id: 13, name: "Jasmine Sayagués", roles: ["DF"] },
-  { id: 14, name: "Alba Muñiz", roles: ["MC"] },
+  "0-1-1-3","0-1-2-2","0-1-3-1","0-2-1-2","0-2-2-1","0-3-1-1","1-1-1-2","1-1-2-1","1-2-1-1",
 ];
 
-const hasRole = (p: Player, r: Role) => (p.roles || []).includes(r);
-const byId = Object.fromEntries(PLAYERS.map((p) => [p.id, p])) as Record<number, Player>;
-
-function formationToCounts(f: typeof FORMATIONS[number]) {
-  const [pt, df, mc, dl] = f.split("-").map((n) => parseInt(n, 10));
-  return { PT: pt || 0, DF: df || 0, MC: mc || 0, DL: dl || 0 };
-}
-
-// ==== Helper puro para poder testear: construye el texto del resumen ====
-function buildSummaryText({
-  formation,
-  lineup,
-  captainId,
-  participantName,
-  participantEmail,
-}: {
-  formation: typeof FORMATIONS[number];
-  lineup: Record<Role, Array<number | null>>;
-  captainId: number | null;
-  participantName: string;
-  participantEmail: string;
-}) {
-  const roleLines = POS.map((r) => {
-    const names = (lineup[r] || []).map((id) => (id ? byId[id]?.name : "—"));
-    return `${r}: ${names.join(", ")}`;
-  }).join("\n"); // ✅ newline correcto
-  const cap = captainId ? byId[captainId]?.name : "—";
-  return `Fantasy – Selección\n\nFormación: ${formation}\n${roleLines}\n\nCapitana: ${cap}\n\nParticipante: ${participantName} <${participantEmail}>`;
-}
-
-function useLineup(formation: typeof FORMATIONS[number]) {
-  const counts = React.useMemo(() => formationToCounts(formation), [formation]);
-  const makeEmpty = React.useMemo(
-    () => (r: Role) => Array.from({ length: counts[r] as number }, () => null as number | null),
-    [counts]
-  );
-  const [lineup, setLineup] = React.useState<Record<Role, Array<number | null>>>({
-    PT: makeEmpty("PT"),
-    DF: makeEmpty("DF"),
-    MC: makeEmpty("MC"),
-    DL: makeEmpty("DL"),
-  });
-
-  React.useEffect(() => {
-    setLineup((prev) => {
-      const resize = (arr: Array<number | null>, n: number) => {
-        const kept = (arr || []).filter(Boolean).slice(0, n) as Array<number | null>;
-        while (kept.length < n) kept.push(null);
-        return kept;
-      };
-      return {
-        PT: resize(prev.PT, counts.PT),
-        DF: resize(prev.DF, counts.DF),
-        MC: resize(prev.MC, counts.MC),
-        DL: resize(prev.DL, counts.DL),
-      };
-    });
-  }, [counts]);
-
-  return { lineup, setLineup, counts };
-}
-
-function Chip({ children, active, onClick }: { children: React.ReactNode; active?: boolean; onClick?: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      title={String(children)}
-      style={{
-        padding: "8px 12px",
-        borderRadius: 999,
-        border: active ? "1px solid #111827" : "1px solid #e5e7eb",
-        background: active ? "#111827" : "#fff",
-        color: active ? "#fff" : "#111827",
-        fontWeight: 700,
-        cursor: "pointer",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function RoleBadge({ role }: { role: Role }) {
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 28,
-        height: 28,
-        borderRadius: 999,
-        background: POS_COLORS[role],
-        color: "#fff",
-        fontSize: 12,
-        fontWeight: 900,
-      }}
-    >
-      {role}
-    </span>
-  );
-}
-
-type Slot = {
-  role: Role;
-  player: Player | null;
-  isCaptain?: boolean;
-  onClick?: () => void;
-  onCaptain?: () => void;
+const PLAYERS: Record<number, string> = {
+  1: "Ari Rodríguez", 2: "Paula Díaz", 3: "Ana García", 4: "Ana Fernández",
+  5: "Nata Martín", 6: "Celia Huon", 7: "Paula Escola", 8: "Judith Antón",
+  9: "Noemi Antón", 10: "María Alonso", 11: "Yaiza García", 12: "Andrea Hernández",
+  13: "Jasmine Sayagués", 14: "Alba Muñiz",
 };
 
-function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
-  return (
-    <div
-      style={{
-        width: "100%",
-        borderRadius: 24,
-        padding: 16,
-        background: "linear-gradient(#15803d,#065f46)",
-        position: "relative",
-        overflow: "hidden",
-        boxShadow: "inset 0 2px 8px rgba(0,0,0,.35)",
-      }}
-    >
-      {/* líneas del campo */}
-      <div style={{ position: "absolute", inset: 8, border: "2px solid rgba(255,255,255,.35)", borderRadius: 20 }} />
-      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
-        {rows.map((row, idx) => {
-          const n = row.players.length || 1;
-          const colWidth = Math.max(20, Math.floor(100 / n) - 2);
-          return (
-            <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
-              {row.players.map((slot, i) => (
-                <button
-                  key={i}
-                  onClick={slot.onClick}
-                  style={{
-                    width: `${colWidth}%`,
-                    maxWidth: 220,
-                    minHeight: 92,
-                    borderRadius: 16,
-                    border: slot.player ? `2px solid ${POS_COLORS[slot.role]}` : "2px dashed rgba(255,255,255,.7)",
-                    background: slot.player ? "#fff" : "rgba(255,255,255,.1)",
-                    color: slot.player ? "#111827" : "#fff",
-                    padding: 10,
-                    cursor: "pointer",
-                    boxShadow: slot.player ? "0 2px 6px rgba(0,0,0,.08)" : "none",
-                  }}
-                >
-                  {slot.player ? (
-                    <div style={{ display: "grid", gap: 6 }}>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        <RoleBadge role={slot.role} />
-                        <span style={{ fontSize: 13, fontWeight: 800, opacity: 0.75 }}>{slot.role}</span>
-                      </div>
-                      <div style={{ position: "relative" }}>
-                        <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.1 }}>{slot.player.name}</div>
-                        {/* Botón de capitana integrado en la tarjeta */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            slot.onCaptain && slot.onCaptain();
-                          }}
-                          title={slot.isCaptain ? "Quitar capitana" : "Marcar como capitana"}
-                          style={{
-                            position: "absolute",
-                            top: -10,
-                            right: -10,
-                            width: 28,
-                            height: 28,
-                            borderRadius: 999,
-                            border: slot.isCaptain ? "2px solid #f59e0b" : "1px solid #e5e7eb",
-                            background: slot.isCaptain ? "#fde68a" : "#fff",
-                            color: "#92400e",
-                            fontSize: 12,
-                            fontWeight: 900,
-                            cursor: "pointer",
-                            boxShadow: "0 1px 3px rgba(0,0,0,.15)",
-                          }}
-                        >
-                          C
-                        </button>
-                      </div>
-                      {slot.isCaptain && (
-                        <span
-                          style={{
-                            alignSelf: "start",
-                            fontSize: 11,
-                            fontWeight: 800,
-                            padding: "2px 6px",
-                            borderRadius: 999,
-                            background: "#fde68a",
-                            border: "1px solid #f59e0b",
-                            color: "#92400e",
-                          }}
-                        >
-                          CAPITANA
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: "center", fontWeight: 700 }}>Añadir</div>
-                  )}
-                </button>
-              ))}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+export default function Home() {
+  const [formation, setFormation] = useState(FORMATIONS[6]); // 1-1-1-2 por defecto
+  const [lineup, setLineup] = useState<Record<Role, Array<number | null>>>({
+    PT: [null], DF: [null], MC: [null], DL: [null, null],
+  });
+  const [captainId, setCaptainId] = useState<number | null>(null);
+  const [participantName, setParticipantName] = useState("");
+  const [participantEmail, setParticipantEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
 
-export default function App() {
-  const [formation, setFormation] = React.useState<typeof FORMATIONS[number]>("1-1-1-2");
-  const { lineup, setLineup, counts } = useLineup(formation);
-  const [captainId, setCaptainId] = React.useState<number | null>(null);
-  const [modal, setModal] = React.useState<{ role: Role; index: number } | null>(null);
-
-  const selected = new Set(Object.values(lineup).flat().filter(Boolean) as number[]);
-  const roleOptions = React.useMemo(
-    () => ({
-      PT: PLAYERS.filter((p) => hasRole(p, "PT")),
-      DF: PLAYERS.filter((p) => hasRole(p, "DF")),
-      MC: PLAYERS.filter((p) => hasRole(p, "MC")),
-      DL: PLAYERS.filter((p) => hasRole(p, "DL")),
-    }),
-    []
-  );
-
-  function openSlot(role: Role, index: number) {
-    setModal({ role, index });
+  function playersFor(role: Role) {
+    return Object.entries(PLAYERS).map(([id, name]) => (
+      <option key={id} value={id}>{name}</option>
+    ));
   }
-  function choosePlayer(id: number) {
-    setLineup((prev) => {
-      const next: Record<Role, Array<number | null>> = { ...prev, [modal!.role]: [...prev[modal!.role]] } as any;
-      // Evitar duplicados quitándolo de cualquier sitio previo
-      POS.forEach((r) => {
-        next[r] = next[r].map((x) => (x === id ? null : x));
-      });
-      next[modal!.role][modal!.index] = id;
-      return next;
+
+  function onChangeFormation(f: string) {
+    setFormation(f);
+    const [pt, df, mc, dl] = f.split("-").map(n => parseInt(n, 10) || 0);
+    setLineup({
+      PT: Array(pt).fill(null),
+      DF: Array(df).fill(null),
+      MC: Array(mc).fill(null),
+      DL: Array(dl).fill(null),
     });
-    setModal(null);
+    setCaptainId(null);
   }
-  function clearSlot() {
-    setLineup((prev) => {
-      const arr = [...prev[modal!.role]];
-      arr[modal!.index] = null;
-      return { ...prev, [modal!.role]: arr };
+
+  function setSlot(role: Role, idx: number, val: string) {
+    setLineup(prev => {
+      const copy = { ...prev };
+      const arr = [...(copy[role] || [])];
+      arr[idx] = val ? parseInt(val, 10) : null;
+      copy[role] = arr;
+      return copy;
     });
-    setModal(null);
   }
 
-  // Construcción de filas para el campo (de arriba a abajo: DL, MC, DF, PT)
-  const rows = React.useMemo(() => {
-    const displayOrder: Role[] = ["DL", "MC", "DF", "PT"].filter((r) => (counts as any)[r] > 0) as Role[];
-    return displayOrder.map((role) => ({
-      role,
-      players: lineup[role].map((id, i) => ({
-        role,
-        player: id ? byId[id] : null,
-        isCaptain: id === captainId,
-        onClick: () => openSlot(role, i),
-        onCaptain: () => {
-          if (!id) return;
-          setCaptainId((c) => (c === id ? null : id));
-        },
-      })),
-    }));
-  }, [counts, lineup, captainId]);
-
-  // Envío por email (via API)
-  const [participantName, setParticipantName] = React.useState("");
-  const [participantEmail, setParticipantEmail] = React.useState("");
-  const [botField, setBotField] = React.useState(""); // honeypot
-  const [sending, setSending] = React.useState(false);
-
-  function summary() {
-    return buildSummaryText({ formation, lineup, captainId, participantName, participantEmail });
-  }
-
-  async function send() {
-    const needed = (counts.PT + counts.DF + counts.MC + counts.DL) as number;
-    const chosen = Object.values(lineup).flat().filter(Boolean).length;
-    if (chosen !== needed) return alert("Completa todos los huecos.");
-    if (!captainId) return alert("Selecciona capitana (botón 'C' en la tarjeta).");
-    if (!participantName || !participantEmail) return alert("Rellena nombre y tu email.");
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
     setSending(true);
     try {
       const res = await fetch("/api/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          formation,
-          lineup,
-          captainId,
-          participantName,
-          participantEmail,
-          botField,
+          formation, lineup, captainId, participantName, participantEmail, botField: "",
         }),
       });
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || "Error al enviar");
-      }
-      alert("✅ Equipo enviado. ¡Suerte!");
-      // Opcional: reset parcial
-      // window.location.href = `mailto:${EMAIL_TO}?subject=${encodeURIComponent("Fantasy – Mi equipo")}&body=${encodeURIComponent(summary())}`;
-    } catch (e: any) {
-      alert("❌ No se pudo enviar: " + e.message);
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "Error");
+      setMsg("✅ Enviado correctamente. Revisa tu email de confirmación.");
+    } catch (err: any) {
+      setMsg("❌ No se pudo enviar. Revisa los campos e inténtalo de nuevo.");
     } finally {
       setSending(false);
     }
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f3f4f6", color: "#111827" }}>
-      <div style={{ maxWidth: 1040, margin: "0 auto", padding: 16 }}>
-        <header style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>Fantasy – Amigas del Duero</h1>
-          <div style={{ flex: 1 }} />
-        </header>
+    <div className="min-h-screen bg-gray-50">
+      <div className="mx-auto max-w-5xl px-4 py-6">
+        <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 mb-4">
+          Fantasy – Amigas del Duero
+        </h1>
 
-        {/* Formación */}
-        <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {FORMATIONS.map((f) => (
-              <Chip key={f} active={formation === f} onClick={() => setFormation(f)}>
-                {f}
-              </Chip>
-            ))}
-          </div>
-        </section>
+        {/* Formaciones */}
+        <div className="flex flex-wrap gap-2 bg-white rounded-xl p-3 shadow-sm mb-4">
+          {FORMATIONS.map(f => (
+            <button
+              key={f}
+              onClick={() => onChangeFormation(f)}
+              className={`px-3 py-1 rounded-full border text-sm
+                 ${formation === f ? "bg-slate-900 text-white" : "bg-slate-100 hover:bg-slate-200"}`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
 
-        {/* CAMPO */}
-        <section style={{ marginBottom: 16 }}>
-          <Pitch rows={rows} />
-        </section>
-
-        {/* Datos y envío */}
-        <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
-              <input
-                value={participantName}
-                onChange={(e) => setParticipantName(e.target.value)}
-                placeholder="Ej. Laura Pérez"
-                style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #d1d5db" }}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu email</label>
-              <input
-                type="email"
-                value={participantEmail}
-                onChange={(e) => setParticipantEmail(e.target.value)}
-                placeholder="tu@email.com"
-                style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #d1d5db" }}
-              />
-            </div>
-            {/* Honeypot anti-bots */}
-            <div style={{ display: "none" }} aria-hidden>
-              <label>Deja esto vacío</label>
-              <input value={botField} onChange={(e) => setBotField(e.target.value)} />
-            </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <button
-                onClick={send}
-                disabled={sending}
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  background: sending ? "#6b7280" : "#111827",
-                  color: "#fff",
-                  border: 0,
-                  borderRadius: 12,
-                  fontWeight: 800,
-                  cursor: sending ? "not-allowed" : "pointer",
-                }}
-              >
-                {sending ? "Enviando..." : "Enviar selección"}
-              </button>
-            </div>
-          </div>
-          <div style={{ marginTop: 12, fontSize: 12, color: "#6b7280" }}>
-            * El envío llega a <strong>{EMAIL_TO}</strong> vía servidor 24/7.
-          </div>
-        </section>
-
-        {/* Modal selección de jugadora */}
-        {modal && (
-          <div
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}
-            onClick={() => setModal(null)}
-          >
-            <div style={{ width: "100%", maxWidth: 520, background: "#fff", borderRadius: 16, padding: 16 }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <strong>Selecciona {modal.role}</strong>
-                <button onClick={() => setModal(null)} style={{ border: 0, background: "#f3f4f6", padding: "6px 10px", borderRadius: 8, cursor: "pointer" }}>
-                  Cerrar
-                </button>
-              </div>
-              <div style={{ display: "grid", gap: 8, maxHeight: "60vh", overflow: "auto" }}>
-                {roleOptions[modal.role]
-                  .filter((p) => !selected.has(p.id) || lineup[modal.role][modal.index] === p.id)
-                  .map((p) => (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        <RoleBadge role={modal.role} />
-                        <div style={{ fontSize: 14, fontWeight: 700 }}>{p.name}</div>
-                      </div>
-                      <button
-                        onClick={() => choosePlayer(p.id)}
-                        style={{ border: "1px solid #10b981", background: "#ecfdf5", color: "#065f46", padding: "6px 10px", borderRadius: 10, fontWeight: 700, cursor: "pointer" }}
+        {/* Campo centrado */}
+        <div className="flex justify-center">
+          <div className="w-full max-w-2xl rounded-3xl p-4"
+               style={{ background: "linear-gradient(180deg,#166534,#065f46)" }}>
+            <div className="rounded-2xl border border-emerald-900/40 p-3 bg-white/5">
+              {/* Slots por rol, de abajo arriba: PT, DF, MC, DL */}
+              <div className="space-y-4">
+                {[..."DLMCDFPT".match(/(..)/g)!.reverse()].map(r => null)}
+                {/* DL */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 justify-items-center">
+                  {(lineup.DL || []).map((id, i) => (
+                    <div key={`DL-${i}`} className="w-full">
+                      <select
+                        className="w-full rounded-xl bg-white/90 p-3 shadow focus:outline-none"
+                        value={id ?? ""}
+                        onChange={(e) => setSlot("DL", i, e.target.value)}
                       >
-                        Elegir
-                      </button>
+                        <option value="">Añadir DL</option>
+                        {playersFor("DL")}
+                      </select>
+                      <div className="text-xs mt-1 text-slate-500">DL</div>
                     </div>
                   ))}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
-                <button onClick={clearSlot} style={{ border: 0, background: "#f3f4f6", padding: "8px 12px", borderRadius: 10, cursor: "pointer" }}>
-                  Vaciar posición
-                </button>
-                <div style={{ fontSize: 12, color: "#6b7280" }}>Solo puedes alinear jugadoras del equipo.</div>
+                </div>
+                {/* MC */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 justify-items-center">
+                  {(lineup.MC || []).map((id, i) => (
+                    <div key={`MC-${i}`} className="w-full">
+                      <select
+                        className="w-full rounded-xl bg-white/90 p-3 shadow focus:outline-none"
+                        value={id ?? ""}
+                        onChange={(e) => setSlot("MC", i, e.target.value)}
+                      >
+                        <option value="">Añadir MC</option>
+                        {playersFor("MC")}
+                      </select>
+                      <div className="text-xs mt-1 text-slate-500">MC</div>
+                    </div>
+                  ))}
+                </div>
+                {/* DF */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 justify-items-center">
+                  {(lineup.DF || []).map((id, i) => (
+                    <div key={`DF-${i}`} className="w-full">
+                      <select
+                        className="w-full rounded-xl bg-white/90 p-3 shadow focus:outline-none"
+                        value={id ?? ""}
+                        onChange={(e) => setSlot("DF", i, e.target.value)}
+                      >
+                        <option value="">Añadir DF</option>
+                        {playersFor("DF")}
+                      </select>
+                      <div className="text-xs mt-1 text-slate-500">DF</div>
+                    </div>
+                  ))}
+                </div>
+                {/* PT */}
+                <div className="grid grid-cols-1 gap-3 justify-items-center">
+                  {(lineup.PT || []).map((id, i) => (
+                    <div key={`PT-${i}`} className="w-full">
+                      <select
+                        className="w-full rounded-xl bg-white/90 p-3 shadow focus:outline-none"
+                        value={id ?? ""}
+                        onChange={(e) => setSlot("PT", i, e.target.value)}
+                      >
+                        <option value="">Añadir PT</option>
+                        {playersFor("PT")}
+                      </select>
+                      <div className="text-xs mt-1 text-slate-500">PT</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
+
+        {/* Formulario */}
+        <form onSubmit={onSubmit} className="mt-5">
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm text-slate-600 mb-1">Tu nombre</label>
+                <input
+                  className="w-full rounded-xl border border-slate-200 p-3 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                  placeholder="Ej. Laura Pérez"
+                  value={participantName}
+                  onChange={(e) => setParticipantName(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-600 mb-1">Tu email</label>
+                <input
+                  className="w-full rounded-xl border border-slate-200 p-3 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                  placeholder="tu@email.com"
+                  value={participantEmail}
+                  onChange={(e) => setParticipantEmail(e.target.value)}
+                  required
+                  type="email"
+                />
+              </div>
+            </div>
+
+            {/* Capitana */}
+            <div className="mt-3">
+              <label className="block text-sm text-slate-600 mb-1">Capitana</label>
+              <select
+                className="w-full rounded-xl border border-slate-200 p-3 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                value={captainId ?? ""}
+                onChange={(e) => setCaptainId(e.target.value ? parseInt(e.target.value, 10) : null)}
+                required
+              >
+                <option value="">Selecciona capitana</option>
+                {Object.entries(PLAYERS).map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              disabled={sending}
+              className="mt-4 w-full rounded-xl bg-slate-900 text-white py-3 font-medium hover:bg-slate-800 disabled:opacity-60"
+            >
+              {sending ? "Enviando…" : "Enviar selección"}
+            </button>
+
+            {/* Regla bajo el botón (reemplaza la nota antigua) */}
+            <p className="text-xs text-slate-500 mt-2">
+              Cada participante solo podrá enviar un equipo por jornada. Si hay varios equipos al mismo nombre, se tomará en cuenta únicamente el último.
+            </p>
+
+            {msg && <p className="mt-3 text-sm">{msg}</p>}
+          </div>
+        </form>
       </div>
     </div>
   );
-}
-
-// ===== Tests rápidos en cliente (desactivados en producción si se desea) =====
-if (typeof window !== "undefined") {
-  (function runDevTests(){
-    try {
-      const formation = "1-1-1-2" as const;
-      const lineup = { PT: [10], DF: [4], MC: [5], DL: [1, 3] } as Record<Role, Array<number | null>>;
-      const txt = (function(){
-        return `Formación: ${formation}\nPT: María Alonso`;
-      })();
-      console.assert(txt.includes("Formación: 1-1-1-2"), "Incluye formación");
-      console.assert(txt.includes("PT: María Alonso"), "Línea PT correcta");
-      // Verificar que todas las formaciones suman 5
-      [
-        "0-1-1-3","0-1-2-2","0-1-3-1",
-        "0-2-1-2","0-2-2-1","0-3-1-1",
-        "1-1-1-2","1-1-2-1","1-2-1-1"
-      ].forEach((f) => {
-        const [pt, df, mc, dl] = f.split("-").map((n) => parseInt(n, 10));
-        console.assert((pt + df + mc + dl) === 5, `Formación ${f} debe tener 5 jugadoras`);
-      });
-      // eslint-disable-next-line no-console
-      console.log("✅ Tests básicos OK");
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn("⚠️ Tests fallaron:", e);
-    }
-  })();
 }
