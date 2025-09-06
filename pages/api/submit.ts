@@ -1,5 +1,6 @@
+// pages/api/submit.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { Resend } from "resend";
+import sgMail from "@sendgrid/mail";
 
 type Role = "PT" | "DF" | "MC" | "DL";
 type Body = {
@@ -18,72 +19,79 @@ const PLAYERS = new Map<number, string>([
   [13, "Jasmine Sayagués"], [14, "Alba Muñiz"],
 ]);
 
-function buildSummaryText(body: Body) {
+function buildSummaryText(b: Body) {
   const POS: Role[] = ["PT", "DF", "MC", "DL"];
-  const roleLines = POS.map((r) => {
-    const names = (body.lineup[r] || []).map((id) => (id ? (PLAYERS.get(id) || "—") : "—"));
-    return `${r}: ${names.join(", ")}`;
-  }).join("\n");
-  const cap = body.captainId ? PLAYERS.get(body.captainId) : "—";
+  const roleLines = POS
+    .map((r) => {
+      const names = (b.lineup[r] || []).map((id) => (id ? PLAYERS.get(id) || "—" : "—"));
+      return `${r}: ${names.join(", ")}`;
+    })
+    .join("\n");
+  const cap = b.captainId ? PLAYERS.get(b.captainId) : "—";
   return `Fantasy – Selección
 
-Formación: ${body.formation}
+Formación: ${b.formation}
 ${roleLines}
 
 Capitana: ${cap}
 
-Participante: ${body.participantName} <${body.participantEmail}>`;
+Participante: ${b.participantName} <${b.participantEmail}>`;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") return res.status(405).json({ ok:false, error:"Method Not Allowed" });
+  if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
 
-  const { formation, lineup, captainId, participantName, participantEmail, botField } = req.body as Body;
+  const {
+    formation,
+    lineup,
+    captainId,
+    participantName,
+    participantEmail,
+    botField,
+  } = req.body as Body;
 
   // Honeypot anti-bots
-  if (botField && botField.trim() !== "") return res.status(200).json({ ok:true, skipped:"honeypot" });
+  if (botField && botField.trim() !== "") return res.status(200).json({ ok: true, skipped: "honeypot" });
 
   // Validaciones básicas
   if (!formation || !lineup || !participantName || !participantEmail)
-    return res.status(400).json({ ok:false, error:"Campos obligatorios faltan" });
+    return res.status(400).json({ ok: false, error: "Campos obligatorios faltan" });
 
   const counts = formation.split("-").map((n) => parseInt(n, 10));
   const needed = counts.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
   const chosen = Object.values(lineup).flat().filter(Boolean).length;
-  if (chosen !== needed) return res.status(400).json({ ok:false, error:"Alineación incompleta" });
-  if (!captainId) return res.status(400).json({ ok:false, error:"Selecciona capitana" });
+  if (chosen !== needed) return res.status(400).json({ ok: false, error: "Alineación incompleta" });
+  if (!captainId) return res.status(400).json({ ok: false, error: "Selecciona capitana" });
 
-  const text = buildSummaryText({ formation, lineup, captainId, participantName, participantEmail });
+  const text = buildSummaryText({
+    formation,
+    lineup,
+    captainId,
+    participantName,
+    participantEmail,
+  });
 
-  const resend = new Resend(process.env.RESEND_API_KEY || "");
-  const to   = process.env.MAIL_TO   || "fantasyamigosdelduero@gmail.com";
+  // --- SendGrid ---
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) return res.status(500).json({ ok: false, error: "Falta SENDGRID_API_KEY" });
 
-  // 🔴 Para probar que todo funciona aunque el dominio no esté verificado:
-  //    empieza usando "onboarding@resend.dev" como remitente.
-  //    Cuando Resend marque tu dominio como Verified, cambia al MAIL_FROM.
-  const from = (process.env.MAIL_FROM && process.env.MAIL_FROM.trim().length > 0)
-    ? process.env.MAIL_FROM!
-    : "onboarding@resend.dev"; // fallback de prueba válido
+  sgMail.setApiKey(apiKey);
+
+  const TO = "fantasyamigosdelduero@gmail.com";
+  const FROM = "info@fantasyaduero.es"; // dominio ya autenticado en SendGrid
 
   try {
-    // La librería devuelve { data, error } (NO lanza excepción)
-    const { data, error } = await resend.emails.send({
-      from,
-      to,
+    await sgMail.send({
+      to: TO,
+      from: FROM,
       subject: "Fantasy – Nuevo equipo enviado",
       text,
-      // reply_to: participantEmail, // opcional
+      replyTo: participantEmail, // opcional, para contestar al participante
     });
 
-    if (error) {
-      console.error("[submit] Resend error:", JSON.stringify(error, null, 2));
-      return res.status(500).json({ ok:false, error });
-    }
-
-    console.log("[submit] resend ok:", JSON.stringify(data, null, 2));
-    return res.status(200).json({ ok:true, id: data?.id ?? null });
-  } catch (e: any) {
-    console.error("[submit] unexpected error:", e?.message || e);
-    return res.status(500).json({ ok:false, error: e?.message || "Unexpected error" });
+    return res.status(200).json({ ok: true });
+  } catch (err: any) {
+    console.error("[sendgrid] error:", err?.response?.body || err);
+    return res.status(500).json({ ok: false, error: "No se pudo enviar el email" });
   }
 }
