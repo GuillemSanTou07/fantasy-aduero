@@ -1,104 +1,77 @@
-// pages/api/submit.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { Resend } from "resend";
 
-// Tipos mínimos para no pelearse con TS
-type Maybe<T> = T | null | undefined;
-type Lineup = { PT:(number|null)[]; DF:(number|null)[]; MC:(number|null)[]; DL:(number|null)[] };
+type Role = "PT" | "DF" | "MC" | "DL";
+type Body = {
+  formation: string;
+  lineup: Record<Role, Array<number | null>>;
+  captainId: number | null;
+  participantName: string;
+  participantEmail: string;
+  botField?: string;
+};
 
-const resend = new Resend(process.env.RESEND_API_KEY ?? "");
+const PLAYERS = new Map<number, string>([
+  [1, "Ari Rodríguez"],
+  [2, "Paula Díaz"],
+  [3, "Ana García"],
+  [4, "Ana Fernández"],
+  [5, "Nata Martín"],
+  [6, "Celia Huon"],
+  [7, "Paula Escola"],
+  [8, "Judith Antón"],
+  [9, "Noemi Antón"],
+  [10, "María Alonso"],
+  [11, "Yaiza García"],
+  [12, "Andrea Hernández"],
+  [13, "Jasmine Sayagués"],
+  [14, "Alba Muñiz"],
+]);
 
-function buildSummaryText(opts: {
-  formation: string; lineup: Lineup; captainId: Maybe<number>;
-  participantName: string; participantEmail: string;
-}) {
-  const { formation, lineup, captainId, participantName, participantEmail } = opts;
-  const POS = ["PT","DF","MC","DL"] as const;
-  const byId: Record<number, string> = {
-    1:"Ari Rodríguez",2:"Paula Díaz",3:"Ana García",4:"Ana Fernández",5:"Nata Martín",6:"Celia Huon",
-    7:"Paula Escola",8:"Judith Antón",9:"Noemi Antón",10:"María Alonso",11:"Yaiza García",12:"Andrea Hernández",
-    13:"Jasmine Sayagués",14:"Alba Muñiz",
-  };
+function buildSummaryText(body: Body) {
+  const POS: Role[] = ["PT", "DF", "MC", "DL"];
   const roleLines = POS.map((r) => {
-    const names = (lineup as any)[r].map((id: number|null) => (id ? byId[id] : "—"));
+    const names = (body.lineup[r] || []).map((id) => (id ? (PLAYERS.get(id) || "—") : "—"));
     return `${r}: ${names.join(", ")}`;
   }).join("\n");
-  const cap = (captainId && byId[captainId]) ? byId[captainId] : "—";
-
-  return `Fantasy – Selección
-
-Formación: ${formation}
-${roleLines}
-
-Capitana: ${cap}
-
-Participante: ${participantName} <${participantEmail}>`;
+  const cap = body.captainId ? PLAYERS.get(body.captainId) : "—";
+  return `Fantasy – Selección\n\nFormación: ${body.formation}\n${roleLines}\n\nCapitana: ${cap}\n\nParticipante: ${body.participantName} <${body.participantEmail}>`;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") return res.status(405).json({ ok:false, error:"Method not allowed" });
+  if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
+  const { formation, lineup, captainId, participantName, participantEmail, botField } = req.body as Body;
 
-  const { formation, lineup, captainId, participantName, participantEmail, botField } = (req.body ?? {}) as any;
+  // Honeypot anti-bots
+  if (botField) return res.status(400).send("Bad request");
 
-  const from = process.env.MAIL_FROM || "";
-  const to   = process.env.MAIL_TO   || "";
-
-  // ---- LOG INICIAL ----
-  console.log("[submit] start", {
-    hasApiKey: !!process.env.RESEND_API_KEY, from, to,
-    botField, hasLineup: !!lineup, formation, participantName, participantEmail
-  });
-
-  // Honeypot
-  if (typeof botField === "string" && botField.trim() !== "") {
-    console.warn("[submit] honeypot triggered");
-    return res.status(200).json({ ok:true, skipped:"honeypot" });
-  }
-
-  // Validaciones mínimas
-  if (!from || !to) {
-    console.error("[submit] missing FROM/TO", { from, to });
-    return res.status(500).json({ ok:false, error:"Server missing MAIL_FROM / MAIL_TO" });
-  }
+  // Validaciones básicas
   if (!formation || !lineup || !participantName || !participantEmail) {
-    console.error("[submit] missing fields", { formation:!!formation, lineup:!!lineup, participantName, participantEmail });
-    return res.status(400).json({ ok:false, error:"Missing fields" });
+    return res.status(400).send("Campos obligatorios faltan");
   }
+  const counts = formation.split("-").map((n) => parseInt(n, 10));
+  const needed = counts.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
+  const chosen = Object.values(lineup).flat().filter(Boolean).length;
+  if (chosen !== needed) return res.status(400).send("Alineación incompleta");
+  if (!captainId) return res.status(400).send("Selecciona capitana");
 
-  const text = buildSummaryText({
-    formation,
-    lineup,
-    captainId: typeof captainId === "number" ? captainId : null,
-    participantName,
-    participantEmail,
-  });
+  const text = buildSummaryText({ formation, lineup, captainId, participantName, participantEmail, botField });
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const to = process.env.MAIL_TO || "fantasyamigosdelduero@gmail.com";
+  const from = process.env.MAIL_FROM || "no-reply@example.com"; // Debe ser un dominio verificado en Resend
 
   try {
-    console.log("[submit] calling Resend.emails.send");
-    // Tipado laxo para evitar errores de versión de la lib
-    const result: any = await (resend as any).emails.send({
+    await resend.emails.send({
       from,
       to,
       subject: "Fantasy – Nuevo equipo enviado",
       text,
-      // reply_to: participantEmail, // opcional
     });
-
-    // La lib nueva devuelve { data, error }; la vieja puede devolver otra forma.
-    const data  = result?.data ?? result?.id ?? null;
-    const error = result?.error ?? null;
-
-    if (error) {
-      console.error("[submit] Resend error:", JSON.stringify(error, null, 2));
-      return res.status(500).json({ ok:false, error });
-    }
-
-    console.log("[submit] resend ok:", JSON.stringify(data, null, 2));
-    return res.status(200).json({ ok:true, id: (typeof data === "object" ? data?.id ?? null : data) });
+    return res.status(200).json({ ok: true });
   } catch (e: any) {
-    // Captura de error detallada
-    const errObj = { message: e?.message ?? String(e), stack: e?.stack ?? null };
-    console.error("[submit] unexpected error:", JSON.stringify(errObj, null, 2));
-    return res.status(500).json({ ok:false, error: errObj });
+    console.error(e);
+    // No exponer detalles de error al cliente
+    return res.status(500).send("No se pudo enviar el email");
   }
 }
