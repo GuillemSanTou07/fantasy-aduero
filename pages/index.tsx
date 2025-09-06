@@ -3,7 +3,7 @@ import React from "react";
 // ===== App simple con selección en CAMPO (Next.js + TS) =====
 // - Sin mercado, sin totw, sin puntuaciones
 // - Selección libre por posición (PT/DF/MC/DL)
-// - Capitana integrada en el campo (botón "C")
+// - Capitana integrada en el campo (botón "C" junto al rol)
 // - Envío por email a backend /api/submit (24/7)
 
 type Role = "PT" | "DF" | "MC" | "DL";
@@ -153,14 +153,14 @@ type Slot = {
   onCaptain?: () => void;
 };
 
-// ✅ CAMBIO: wrapper para centrar el campo y limitar ancho
+// ✅ Wrapper centrado para móvil/desktop
 function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
   return (
     <div style={{ display: "flex", justifyContent: "center" }}>
       <div
         style={{
           width: "100%",
-          maxWidth: 720, // limita ancho en móvil/desktop y queda bien centrado
+          maxWidth: 720,
           borderRadius: 24,
           padding: 16,
           background: "linear-gradient(#15803d,#065f46)",
@@ -196,13 +196,9 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                   >
                     {slot.player ? (
                       <div style={{ display: "grid", gap: 6 }}>
+                        {/* ⬇️ Solo el círculo + botón C al lado (sin repetir texto del rol) */}
                         <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                           <RoleBadge role={slot.role} />
-                          <span style={{ fontSize: 13, fontWeight: 800, opacity: 0.75 }}>{slot.role}</span>
-                        </div>
-                        <div style={{ position: "relative" }}>
-                          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.1 }}>{slot.player.name}</div>
-                          {/* Botón de capitana integrado en la tarjeta */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -210,9 +206,6 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                             }}
                             title={slot.isCaptain ? "Quitar capitana" : "Marcar como capitana"}
                             style={{
-                              position: "absolute",
-                              top: -10,
-                              right: -10,
                               width: 28,
                               height: 28,
                               borderRadius: 999,
@@ -228,6 +221,7 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                             C
                           </button>
                         </div>
+                        <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.1 }}>{slot.player.name}</div>
                         {slot.isCaptain && (
                           <span
                             style={{
@@ -366,7 +360,7 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: "#f3f4f6", color: "#111827" }}>
       <div style={{ maxWidth: 1040, margin: "0 auto", padding: 16 }}>
         <header style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>Fantasy – Amigas del Duero</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>Fantasy – Amigos del Duero</h1>
           <div style={{ flex: 1 }} />
         </header>
 
@@ -388,7 +382,7 @@ export default function App() {
 
         {/* Datos y envío */}
         <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}>
-          {/* ✅ CAMBIO: grid responsive que NO se solapa en móvil */}
+          {/* Grid responsive que NO se solapa en móvil */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
             <div>
               <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
@@ -400,7 +394,9 @@ export default function App() {
               />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu email</label>
+              <label style={{ display: "block", fontSize: 13, marginBottom: 2 }}>
+                Tu email <span style={{ color: "#6b7280" }}>(te enviaremos una copia)</span>
+              </label>
               <input
                 type="email"
                 value={participantEmail}
@@ -434,7 +430,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* ✅ CAMBIO: reglas rápidas en lugar del aviso del email */}
+          {/* Reglas rápidas */}
           <div style={{ marginTop: 12, fontSize: 12, color: "#6b7280" }}>
             <strong>Cómo funciona:</strong>
             <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
