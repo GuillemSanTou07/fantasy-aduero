@@ -70,19 +70,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const text = buildSummaryText({ formation, lineup, captainId: typeof captainId === "number" ? captainId : null, participantName, participantEmail });
 
-  try {
-    console.log("[submit] calling Resend.send");
-    const result = await resend.emails.send({
-      from,
-      to,
-      subject: "Fantasy – Nuevo equipo enviado",
-      text,
-      // reply_to: participantEmail, // si quieres poder responder al participante
-    });
-    console.log("[submit] resend result", result?.id || result);
-    return res.status(200).json({ ok: true, id: result?.id || null });
-  } catch (e: any) {
-    console.error("[submit] Resend error:", e?.message || e);
-    return res.status(500).json({ ok: false, error: e?.message || "Resend failed" });
-  }
+try {
+  console.log("[submit] calling Resend.send");
+  const result = await resend.emails.send({
+    from, to, subject:"Fantasy – Nuevo equipo enviado", text,
+    // reply_to: participantEmail,
+  });
+  console.log("[submit] resend result", JSON.stringify(result, null, 2));
+  return res.status(200).json({ ok:true, result });
+} catch (e:any) {
+  console.error("[submit] Resend error:", e?.message || e);
+  return res.status(500).json({ ok:false, error: e?.message || "Resend failed" });
 }
+
