@@ -1,11 +1,15 @@
 import React from "react";
 
+// ===== App simple con selección en CAMPO (Next.js + TS) =====
+
 type Role = "PT" | "DF" | "MC" | "DL";
 
 const POS: Role[] = ["PT", "DF", "MC", "DL"];
 const POS_COLORS: Record<Role, string> = { PT: "#f59e0b", DF: "#3b82f6", MC: "#10b981", DL: "#ef4444" };
 const FORMATIONS = [
-  "0-1-1-3","0-1-2-2","0-1-3-1","0-2-1-2","0-2-2-1","0-3-1-1","1-1-1-2","1-1-2-1","1-2-1-1",
+  "0-1-1-3","0-1-2-2","0-1-3-1",
+  "0-2-1-2","0-2-2-1","0-3-1-1",
+  "1-1-1-2","1-1-2-1","1-2-1-1",
 ] as const;
 const EMAIL_TO = process.env.NEXT_PUBLIC_MAIL_TO || "08guillem80@gmail.com";
 
@@ -36,7 +40,7 @@ function formationToCounts(f: typeof FORMATIONS[number]) {
   return { PT: pt || 0, DF: df || 0, MC: mc || 0, DL: dl || 0 };
 }
 
-// ==== Helper de resumen (no cambia) ====
+// ==== Helper puro para poder testear: construye el texto del resumen ====
 function buildSummaryText({
   formation, lineup, captainId, participantName, participantEmail,
 }: {
@@ -83,19 +87,26 @@ function useLineup(formation: typeof FORMATIONS[number]) {
   return { lineup, setLineup, counts };
 }
 
-function Chip({ children, active, onClick }: { children: React.ReactNode; active?: boolean; onClick?: () => void }) {
+// ===== UI =====
+function Chip({
+  children, active, onClick, style,
+}: {
+  children: React.ReactNode; active?: boolean; onClick?: () => void; style?: React.CSSProperties;
+}) {
   return (
     <button
       onClick={onClick}
       title={String(children)}
       style={{
-        padding: "8px 12px",
-        borderRadius: 999,
-        border: active ? "1px solid #111827" : "1px solid #e5e7eb",
-        background: active ? "#111827" : "#fff",
+        padding: "10px 12px",
+        borderRadius: 12,
+        border: active ? "1px solid #0ea5e9" : "1px solid #e5e7eb",
+        background: active ? "#0ea5e9" : "#fff",
         color: active ? "#fff" : "#111827",
-        fontWeight: 700,
+        fontWeight: 800,
         cursor: "pointer",
+        width: "100%",
+        ...style,
       }}
     >
       {children}
@@ -107,16 +118,9 @@ function RoleBadge({ role }: { role: Role }) {
   return (
     <span
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 28,
-        height: 28,
-        borderRadius: 999,
-        background: POS_COLORS[role],
-        color: "#fff",
-        fontSize: 12,
-        fontWeight: 900,
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        width: 28, height: 28, borderRadius: 999,
+        background: POS_COLORS[role], color: "#fff", fontSize: 12, fontWeight: 900,
       }}
     >
       {role}
@@ -132,19 +136,15 @@ type Slot = {
   onCaptain?: () => void;
 };
 
-// === CAMPO centrado ===
+// Wrapper centrado para el campo
 function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
   return (
     <div style={{ display: "flex", justifyContent: "center" }}>
       <div
         style={{
-          width: "100%",
-          maxWidth: 720,
-          borderRadius: 24,
-          padding: 16,
-          background: "linear-gradient(#15803d,#065f46)",
-          position: "relative",
-          overflow: "hidden",
+          width: "100%", maxWidth: 720, borderRadius: 24, padding: 16,
+          background: "linear-gradient(135deg,#15803d,#065f46)",
+          position: "relative", overflow: "hidden",
           boxShadow: "inset 0 2px 8px rgba(0,0,0,.35)",
         }}
       >
@@ -160,37 +160,30 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                     key={i}
                     onClick={slot.onClick}
                     style={{
-                      width: `${colWidth}%`,
-                      maxWidth: 220,
-                      minHeight: 92,
+                      width: `${colWidth}%`, maxWidth: 220, minHeight: 92,
                       borderRadius: 16,
                       border: slot.player ? `2px solid ${POS_COLORS[slot.role]}` : "2px dashed rgba(255,255,255,.7)",
-                      background: slot.player ? "#fff" : "rgba(255,255,255,.1)",
+                      background: slot.player ? "#fff" : "rgba(255,255,255,.08)",
                       color: slot.player ? "#111827" : "#fff",
-                      padding: 10,
-                      cursor: "pointer",
+                      padding: 10, cursor: "pointer",
                       boxShadow: slot.player ? "0 2px 6px rgba(0,0,0,.08)" : "none",
                     }}
                   >
                     {slot.player ? (
                       <div style={{ display: "grid", gap: 6 }}>
-                        {/* NOMBRE + DL + C en la MISMA línea */}
-                        <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                        {/* Posición (izq) + Nombre (centrado) + C (dcha) */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                          <RoleBadge role={slot.role} />
                           <span
-                            style={{
-                              fontSize: 15,
-                              fontWeight: 700,
-                              lineHeight: "28px",
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              maxWidth: 130,
-                            }}
                             title={slot.player.name}
+                            style={{
+                              fontSize: 16, fontWeight: 800, lineHeight: "28px",
+                              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                              maxWidth: 120, textAlign: "center",
+                            }}
                           >
                             {slot.player.name}
                           </span>
-                          <RoleBadge role={slot.role} />
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -198,15 +191,10 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                             }}
                             title={slot.isCaptain ? "Quitar capitana" : "Marcar como capitana"}
                             style={{
-                              width: 28,
-                              height: 28,
-                              borderRadius: 999,
+                              width: 28, height: 28, borderRadius: 999,
                               border: slot.isCaptain ? "2px solid #f59e0b" : "1px solid #e5e7eb",
                               background: slot.isCaptain ? "#fde68a" : "#fff",
-                              color: "#92400e",
-                              fontSize: 12,
-                              fontWeight: 900,
-                              cursor: "pointer",
+                              color: "#92400e", fontSize: 12, fontWeight: 900, cursor: "pointer",
                               boxShadow: "0 1px 3px rgba(0,0,0,.15)",
                             }}
                           >
@@ -264,6 +252,7 @@ export default function App() {
     setModal(null);
   }
 
+  // Filas del campo (DL, MC, DF, PT)
   const rows = React.useMemo(() => {
     const displayOrder: Role[] = ["DL", "MC", "DF", "PT"].filter((r) => (counts as any)[r] > 0) as Role[];
     return displayOrder.map((role) => ({
@@ -299,9 +288,7 @@ export default function App() {
       const res = await fetch("/api/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          formation, lineup, captainId, participantName, participantEmail, botField,
-        }),
+        body: JSON.stringify({ formation, lineup, captainId, participantName, participantEmail, botField }),
       });
       if (!res.ok) {
         const t = await res.text();
@@ -317,20 +304,24 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f3f4f6", color: "#111827" }}>
+    <div style={{ minHeight: "100vh", background: "#eef2f7", color: "#111827" }}>
       <div style={{ maxWidth: 1040, margin: "0 auto", padding: 16 }}>
-        <header style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>Fantasy – Amigos del Duero</h1>
-          <div style={{ flex: 1 }} />
+        {/* Header mejorado */}
+        <header style={{ background: "#0f172a", color: "#fff", borderRadius: 14, padding: "12px 16px", marginBottom: 12, boxShadow: "0 2px 10px rgba(0,0,0,.05)" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0, letterSpacing: .2 }}>
+            ⚽ Fantasy – Amigos del Duero
+          </h1>
         </header>
 
-        {/* Formación */}
+        {/* Formación: cuadrícula 3x3 */}
         <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: 10,
+          }}>
             {FORMATIONS.map((f) => (
-              <Chip key={f} active={formation === f} onClick={() => setFormation(f)}>
-                {f}
-              </Chip>
+              <Chip key={f} active={formation === f} onClick={() => setFormation(f)}>{f}</Chip>
             ))}
           </div>
         </section>
@@ -342,12 +333,12 @@ export default function App() {
 
         {/* Datos y envío */}
         <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}>
-          {/* Grid responsive y nivelado */}
+          {/* Más separación y nivelado */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-            gap: 12,
-            alignItems: "end", // ⬅️ alinea ambos inputs a la misma altura
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 16,
+            alignItems: "end",
           }}>
             <div>
               <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
@@ -395,15 +386,14 @@ export default function App() {
             </div>
           </div>
 
-          {/* Nota de email + reglas */}
+          {/* Nota y reglas actualizadas */}
           <div style={{ marginTop: 12, fontSize: 12, color: "#6b7280" }}>
-            <em>Se enviará una copia al email indicado.</em>
+            <em>Se enviará una copia del equipo que elijas al email indicado.</em>
             <div style={{ height: 6 }} />
             <strong>Cómo funciona:</strong>
             <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
-              <li>Elige tu equipo con la formación de arriba.</li>
-              <li>La <strong>capitana</strong> puntúa <strong>x2</strong>.</li>
-              <li>Solo un equipo por jornada; si envías varios con el mismo nombre, cuenta el <strong>último</strong>.</li>
+              <li>Selecciona tu formación y escoge hasta 5 jugadoras por posición.</li>
+              <li>Selecciona una capitana (los puntos que haga se multiplicarán x2).</li>
             </ul>
           </div>
         </section>
@@ -453,7 +443,7 @@ export default function App() {
   );
 }
 
-// ===== Tests rápidos (opcionales) =====
+// ===== Tests rápidos en cliente =====
 if (typeof window !== "undefined") {
   (function runDevTests(){
     try {
@@ -462,7 +452,9 @@ if (typeof window !== "undefined") {
       console.assert(txt.includes("Formación: 1-1-1-2"), "Incluye formación");
       console.assert(txt.includes("PT: María Alonso"), "Línea PT correcta");
       [
-        "0-1-1-3","0-1-2-2","0-1-3-1","0-2-1-2","0-2-2-1","0-3-1-1","1-1-1-2","1-1-2-1","1-2-1-1"
+        "0-1-1-3","0-1-2-2","0-1-3-1",
+        "0-2-1-2","0-2-2-1","0-3-1-1",
+        "1-1-1-2","1-1-2-1","1-2-1-1"
       ].forEach((f) => {
         const [pt, df, mc, dl] = f.split("-").map((n) => parseInt(n, 10));
         console.assert((pt + df + mc + dl) === 5, `Formación ${f} debe tener 5 jugadoras`);
