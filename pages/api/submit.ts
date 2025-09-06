@@ -64,25 +64,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     participantName, participantEmail
   });
 
-  try {
-    console.log("[submit] calling Resend.emails.send");
-    const { data, error } = await resend.emails.send({
-      from,
-      to,
-      subject: "Fantasy – Nuevo equipo enviado",
-      text,
-      // reply_to: participantEmail,
-    });
+try {
+  console.log("[submit] calling Resend.emails.send");
+  const { data, error } = await resend.emails.send({
+    from,
+    to,
+    subject: "Fantasy – Nuevo equipo enviado",
+    text,
+  });
 
-    if (error) {
-      console.error("[submit] Resend error:", error);
-      return res.status(500).json({ ok:false, error: String(error) });
-    }
-
-    console.log("[submit] resend data", data);
-    return res.status(200).json({ ok:true, id: data?.id ?? null });
-  } catch (e:any) {
-    console.error("[submit] unexpected error:", e?.message || e);
-    return res.status(500).json({ ok:false, error: e?.message || "Unexpected error" });
+  if (error) {
+    console.error("[submit] Resend error:", JSON.stringify(error, null, 2));
+    return res.status(500).json({ ok: false, error });
   }
+
+  console.log("[submit] resend data", data);
+  return res.status(200).json({ ok: true, id: data?.id ?? null });
+} catch (e: any) {
+  console.error("[submit] unexpected error:", e);
+  return res.status(500).json({ ok: false, error: e?.message || e });
 }
