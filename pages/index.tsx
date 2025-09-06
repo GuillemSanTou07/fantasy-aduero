@@ -1,7 +1,5 @@
 import React from "react";
 
-// ===== App simple con selección en CAMPO (Next.js + TS) =====
-
 type Role = "PT" | "DF" | "MC" | "DL";
 
 const POS: Role[] = ["PT", "DF", "MC", "DL"];
@@ -11,7 +9,6 @@ const FORMATIONS = [
   "0-2-1-2","0-2-2-1","0-3-1-1",
   "1-1-1-2","1-1-2-1","1-2-1-1",
 ] as const;
-const EMAIL_TO = process.env.NEXT_PUBLIC_MAIL_TO || "08guillem80@gmail.com";
 
 type Player = { id: number; name: string; roles: Role[] };
 
@@ -40,7 +37,7 @@ function formationToCounts(f: typeof FORMATIONS[number]) {
   return { PT: pt || 0, DF: df || 0, MC: mc || 0, DL: dl || 0 };
 }
 
-// ==== Helper puro para poder testear: construye el texto del resumen ====
+// === Resumen para email (sin cambios de lógica)
 function buildSummaryText({
   formation, lineup, captainId, participantName, participantEmail,
 }: {
@@ -87,26 +84,25 @@ function useLineup(formation: typeof FORMATIONS[number]) {
   return { lineup, setLineup, counts };
 }
 
-// ===== UI =====
+// === UI
 function Chip({
-  children, active, onClick, style,
-}: {
-  children: React.ReactNode; active?: boolean; onClick?: () => void; style?: React.CSSProperties;
-}) {
+  children, active, onClick,
+}: { children: React.ReactNode; active?: boolean; onClick?: () => void }) {
   return (
     <button
       onClick={onClick}
       title={String(children)}
       style={{
-        padding: "10px 12px",
+        padding: "12px 12px",
         borderRadius: 12,
-        border: active ? "1px solid #0ea5e9" : "1px solid #e5e7eb",
-        background: active ? "#0ea5e9" : "#fff",
+        border: active ? "1px solid #0f172a" : "1px solid #e5e7eb",
+        background: active ? "#0f172a" : "#fff",          // ⬅ activo en color de la página
         color: active ? "#fff" : "#111827",
-        fontWeight: 800,
+        fontWeight: 900,
         cursor: "pointer",
         width: "100%",
-        ...style,
+        boxShadow: active ? "0 4px 14px rgba(15,23,42,.25)" : "none",
+        transition: "all .15s ease",
       }}
     >
       {children}
@@ -114,13 +110,13 @@ function Chip({
   );
 }
 
-function RoleBadge({ role }: { role: Role }) {
+function RoleBadge({ role, size = 28 }: { role: Role; size?: number }) {
   return (
     <span
       style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
-        width: 28, height: 28, borderRadius: 999,
-        background: POS_COLORS[role], color: "#fff", fontSize: 12, fontWeight: 900,
+        width: size, height: size, borderRadius: 999,
+        background: POS_COLORS[role], color: "#fff", fontSize: size < 28 ? 11 : 12, fontWeight: 900,
       }}
     >
       {role}
@@ -136,8 +132,8 @@ type Slot = {
   onCaptain?: () => void;
 };
 
-// Wrapper centrado para el campo
-function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
+// Campo
+function Pitch({ rows, isMobile }: { rows: Array<{ role: Role; players: Slot[] }>; isMobile: boolean }) {
   return (
     <div style={{ display: "flex", justifyContent: "center" }}>
       <div
@@ -152,7 +148,9 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
           {rows.map((row, idx) => {
             const n = row.players.length || 1;
-            const colWidth = Math.max(20, Math.floor(100 / n) - 2);
+            const compact = isMobile && n >= 2;         // ⬅️ modo compacto móvil para 2 o más
+            const ultraCompact = isMobile && n >= 3;     // ⬅️ ajustes extra cuando hay 3
+            const colWidth = Math.max(22, Math.floor(100 / n) - 2);
             return (
               <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
                 {row.players.map((slot, i) => (
@@ -160,18 +158,63 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                     key={i}
                     onClick={slot.onClick}
                     style={{
-                      width: `${colWidth}%`, maxWidth: 220, minHeight: 92,
+                      width: `${colWidth}%`,
+                      maxWidth: compact ? 190 : 220,
+                      minHeight: compact ? 84 : 92,
                       borderRadius: 16,
                       border: slot.player ? `2px solid ${POS_COLORS[slot.role]}` : "2px dashed rgba(255,255,255,.7)",
                       background: slot.player ? "#fff" : "rgba(255,255,255,.08)",
                       color: slot.player ? "#111827" : "#fff",
-                      padding: 10, cursor: "pointer",
+                      padding: compact ? 8 : 10,
+                      cursor: "pointer",
                       boxShadow: slot.player ? "0 2px 6px rgba(0,0,0,.08)" : "none",
+                      position: "relative",
                     }}
                   >
                     {slot.player ? (
-                      <div style={{ display: "grid", gap: 6 }}>
-                        {/* Posición (izq) + Nombre (centrado) + C (dcha) */}
+                      // ====== contenido tarjeta ======
+                      compact ? (
+                        // MODO COMPACTO: rol izq (pequeño) + nombre centrado + C flotando dcha
+                        <div style={{ display: "grid", alignItems: "center" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                            <RoleBadge role={slot.role} size={ultraCompact ? 22 : 24} />
+                            <span
+                              title={slot.player.name}
+                              style={{
+                                flex: 1,
+                                fontSize: ultraCompact ? 14 : 15,
+                                fontWeight: 800,
+                                lineHeight: "24px",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                maxWidth: "70%",
+                                textAlign: "center",
+                              }}
+                            >
+                              {slot.player.name}
+                            </span>
+                          </div>
+                          {/* C flotante para que no tape el nombre ni choque con la tarjeta vecina */}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); slot.onCaptain && slot.onCaptain(); }}
+                            title={slot.isCaptain ? "Quitar capitana" : "Marcar como capitana"}
+                            style={{
+                              position: "absolute",
+                              top: -10,
+                              right: -10,
+                              width: 28, height: 28, borderRadius: 999,
+                              border: slot.isCaptain ? "2px solid #f59e0b" : "1px solid #e5e7eb",
+                              background: slot.isCaptain ? "#fde68a" : "#fff",
+                              color: "#92400e", fontSize: 12, fontWeight: 900, cursor: "pointer",
+                              boxShadow: "0 1px 3px rgba(0,0,0,.15)",
+                            }}
+                          >
+                            C
+                          </button>
+                        </div>
+                      ) : (
+                        // MODO NORMAL (desktop o 1 tarjeta): rol — nombre — C en línea
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
                           <RoleBadge role={slot.role} />
                           <span
@@ -179,16 +222,13 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                             style={{
                               fontSize: 16, fontWeight: 800, lineHeight: "28px",
                               whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                              maxWidth: 120, textAlign: "center",
+                              maxWidth: 140, textAlign: "center",
                             }}
                           >
                             {slot.player.name}
                           </span>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              slot.onCaptain && slot.onCaptain();
-                            }}
+                            onClick={(e) => { e.stopPropagation(); slot.onCaptain && slot.onCaptain(); }}
                             title={slot.isCaptain ? "Quitar capitana" : "Marcar como capitana"}
                             style={{
                               width: 28, height: 28, borderRadius: 999,
@@ -201,7 +241,7 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                             C
                           </button>
                         </div>
-                      </div>
+                      )
                     ) : (
                       <div style={{ textAlign: "center", fontWeight: 700 }}>Añadir</div>
                     )}
@@ -221,6 +261,21 @@ export default function App() {
   const { lineup, setLineup, counts } = useLineup(formation);
   const [captainId, setCaptainId] = React.useState<number | null>(null);
   const [modal, setModal] = React.useState<{ role: Role; index: number } | null>(null);
+
+  // detectar viewport para el modo compacto
+  const [isMobile, setIsMobile] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 640px)");
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile((e as MediaQueryList).matches ?? (e as any).matches);
+    handler(mq as any);
+    if (mq.addEventListener) mq.addEventListener("change", handler as any);
+    else mq.addListener(handler as any);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", handler as any);
+      else mq.removeListener(handler as any);
+    };
+  }, []);
 
   const selected = new Set(Object.values(lineup).flat().filter(Boolean) as number[]);
   const roleOptions = React.useMemo(
@@ -252,7 +307,6 @@ export default function App() {
     setModal(null);
   }
 
-  // Filas del campo (DL, MC, DF, PT)
   const rows = React.useMemo(() => {
     const displayOrder: Role[] = ["DL", "MC", "DF", "PT"].filter((r) => (counts as any)[r] > 0) as Role[];
     return displayOrder.map((role) => ({
@@ -267,7 +321,7 @@ export default function App() {
     }));
   }, [counts, lineup, captainId]);
 
-  // Envío por email
+  // Envío
   const [participantName, setParticipantName] = React.useState("");
   const [participantEmail, setParticipantEmail] = React.useState("");
   const [botField, setBotField] = React.useState("");
@@ -295,7 +349,7 @@ export default function App() {
         throw new Error(t || "Error al enviar");
       }
       alert("✅ Equipo enviado. ¡Suerte!");
-      // window.location.href = `mailto:${EMAIL_TO}?subject=${encodeURIComponent("Fantasy – Mi equipo")}&body=${encodeURIComponent(summary())}`;
+      // window.location.href = `mailto:?subject=${encodeURIComponent("Fantasy – Mi equipo")}&body=${encodeURIComponent(summary())}`;
     } catch (e: any) {
       alert("❌ No se pudo enviar: " + e.message);
     } finally {
@@ -306,40 +360,28 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: "#eef2f7", color: "#111827" }}>
       <div style={{ maxWidth: 1040, margin: "0 auto", padding: 16 }}>
-        {/* Header mejorado */}
+        {/* Header */}
         <header style={{ background: "#0f172a", color: "#fff", borderRadius: 14, padding: "12px 16px", marginBottom: 12, boxShadow: "0 2px 10px rgba(0,0,0,.05)" }}>
-          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0, letterSpacing: .2 }}>
-            ⚽ Fantasy – Amigos del Duero
-          </h1>
+          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0, letterSpacing: .2 }}>⚽ Fantasy – Amigos del Duero</h1>
         </header>
 
-        {/* Formación: cuadrícula 3x3 */}
+        {/* Formación 3×3 con chip activo en color de marca */}
         <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: 10,
-          }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
             {FORMATIONS.map((f) => (
               <Chip key={f} active={formation === f} onClick={() => setFormation(f)}>{f}</Chip>
             ))}
           </div>
         </section>
 
-        {/* CAMPO */}
+        {/* Campo */}
         <section style={{ marginBottom: 16 }}>
-          <Pitch rows={rows} />
+          <Pitch rows={rows} isMobile={isMobile} />
         </section>
 
         {/* Datos y envío */}
         <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}>
-          {/* Más separación y nivelado */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: 16,
-            alignItems: "end",
-          }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, alignItems: "end" }}>
             <div>
               <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
               <input
@@ -359,26 +401,18 @@ export default function App() {
                 style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #d1d5db", height: 42 }}
               />
             </div>
-
-            {/* Honeypot anti-bots */}
             <div style={{ display: "none" }} aria-hidden>
               <label>Deja esto vacío</label>
               <input value={botField} onChange={(e) => setBotField(e.target.value)} />
             </div>
-
             <div style={{ gridColumn: "1 / -1" }}>
               <button
                 onClick={send}
                 disabled={sending}
                 style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  background: sending ? "#6b7280" : "#111827",
-                  color: "#fff",
-                  border: 0,
-                  borderRadius: 12,
-                  fontWeight: 800,
-                  cursor: sending ? "not-allowed" : "pointer",
+                  width: "100%", padding: "12px 14px",
+                  background: sending ? "#6b7280" : "#111827", color: "#fff",
+                  border: 0, borderRadius: 12, fontWeight: 800, cursor: sending ? "not-allowed" : "pointer",
                 }}
               >
                 {sending ? "Enviando..." : "Enviar selección"}
@@ -386,7 +420,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Nota y reglas actualizadas */}
           <div style={{ marginTop: 12, fontSize: 12, color: "#6b7280" }}>
             <em>Se enviará una copia del equipo que elijas al email indicado.</em>
             <div style={{ height: 6 }} />
@@ -407,14 +440,12 @@ export default function App() {
             <div style={{ width: "100%", maxWidth: 520, background: "#fff", borderRadius: 16, padding: 16 }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <strong>Selecciona {modal.role}</strong>
-                <button onClick={() => setModal(null)} style={{ border: 0, background: "#f3f4f6", padding: "6px 10px", borderRadius: 8, cursor: "pointer" }}>
-                  Cerrar
-                </button>
+                <button onClick={() => setModal(null)} style={{ border: 0, background: "#f3f4f6", padding: "6px 10px", borderRadius: 8, cursor: "pointer" }}>Cerrar</button>
               </div>
               <div style={{ display: "grid", gap: 8, maxHeight: "60vh", overflow: "auto" }}>
-                {roleOptions[modal.role]
-                  .filter((p) => !selected.has(p.id) || lineup[modal.role][modal.index] === p.id)
-                  .map((p) => (
+                {({ PT: PLAYERS.filter((p) => hasRole(p, "PT")), DF: PLAYERS.filter((p) => hasRole(p, "DF")), MC: PLAYERS.filter((p) => hasRole(p, "MC")), DL: PLAYERS.filter((p) => hasRole(p, "DL")) } as any)[modal.role]
+                  .filter((p: Player) => !selected.has(p.id) || lineup[modal.role][modal.index] === p.id)
+                  .map((p: Player) => (
                     <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}>
                       <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                         <RoleBadge role={modal.role} />
@@ -430,9 +461,7 @@ export default function App() {
                   ))}
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
-                <button onClick={clearSlot} style={{ border: 0, background: "#f3f4f6", padding: "8px 12px", borderRadius: 10, cursor: "pointer" }}>
-                  Vaciar posición
-                </button>
+                <button onClick={clearSlot} style={{ border: 0, background: "#f3f4f6", padding: "8px 12px", borderRadius: 10, cursor: "pointer" }}>Vaciar posición</button>
                 <div style={{ fontSize: 12, color: "#6b7280" }}>Solo puedes alinear jugadoras del equipo.</div>
               </div>
             </div>
@@ -443,7 +472,7 @@ export default function App() {
   );
 }
 
-// ===== Tests rápidos en cliente =====
+// ===== Tests rápidos
 if (typeof window !== "undefined") {
   (function runDevTests(){
     try {
