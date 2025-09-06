@@ -1,4 +1,3 @@
-// pages/api/submit.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import sgMail from "@sendgrid/mail";
 
@@ -12,7 +11,7 @@ type Body = {
   botField?: string;
 };
 
-// ====== Datos de jugadoras ======
+// Jugadoras
 const PLAYERS = new Map<number, string>([
   [1, "Ari Rodríguez"], [2, "Paula Díaz"], [3, "Ana García"], [4, "Ana Fernández"],
   [5, "Nata Martín"], [6, "Celia Huon"], [7, "Paula Escola"], [8, "Judith Antón"],
@@ -20,51 +19,52 @@ const PLAYERS = new Map<number, string>([
   [13, "Jasmine Sayagués"], [14, "Alba Muñiz"],
 ]);
 
-// ====== Helpers comunes ======
-const roleOrder: Role[] = ["DL", "MC", "DF", "PT"]; // de arriba a abajo (campo)
+// ===== Helpers de render =====
+const roleOrder: Role[] = ["DL", "MC", "DF", "PT"]; // arriba -> abajo
 const roleColor = (r: Role) =>
   r === "PT" ? "#f59e0b" : r === "DF" ? "#3b82f6" : r === "MC" ? "#10b981" : "#ef4444";
 
-// Badge redondo (centrado vertical y horizontal por line-height)
+/** Badge de posición, centrado exacto (24x24, line-height:24px) */
 function roleBadge(role: Role) {
   return `
     <span style="
       display:inline-block;width:24px;height:24px;line-height:24px;
       border-radius:9999px;text-align:center;color:#fff;font-size:12px;font-weight:900;
-      background:${roleColor(role)};">${role}</span>
+      vertical-align:middle;background:${roleColor(role)};">${role}</span>
   `;
 }
 
-// Badge de capitana (overlay arriba-derecha). No cambia el tamaño de la tarjeta.
+/** Badge de capitana flotante (sobresale arriba-derecha) */
 function captainBadge() {
   return `
     <span style="
-      position:absolute;top:-8px;right:-8px;
+      position:absolute;top:-10px;right:-10px;
       display:inline-block;width:22px;height:22px;line-height:22px;
       border-radius:9999px;text-align:center;font-weight:900;font-size:12px;
       background:#fde68a;border:2px solid #f59e0b;color:#92400e;">C</span>
   `;
 }
 
-// Tarjeta limpia: badge de posición + nombre. Si es capitana, overlay de “C”.
+/** Tarjeta: MISMO tamaño siempre; badge + nombre alineados en la MISMA línea */
 function card(role: Role, name: string, isCaptain: boolean) {
   return `
     <div style="
-      display:inline-block;min-width:140px;max-width:200px;
+      display:inline-block;min-width:150px;max-width:210px;
       background:#ffffff;border-radius:12px;border:2px solid ${roleColor(role)};
       box-shadow:0 2px 6px rgba(0,0,0,.08);padding:10px 12px;margin:6px;
       text-align:left;position:relative;vertical-align:top;">
       ${isCaptain ? captainBadge() : ""}
-      <div style="display:inline-flex;align-items:center;gap:8px;">
+      <div style="display:inline-flex;align-items:center;">
         ${roleBadge(role)}
-        <span style="font-size:15px;font-weight:700;line-height:1.2;white-space:nowrap;">${name}</span>
+        <span style="display:inline-block;margin-left:12px;
+          font-size:15px;font-weight:700;white-space:nowrap;
+          height:24px;line-height:24px;vertical-align:middle;">${name}</span>
       </div>
     </div>
   `;
 }
 
 function lineupRowsHTML(b: Body) {
-  // Renderiza filas DL–MC–DF–PT con las tarjetas centradas por fila
   return roleOrder
     .map((role) => {
       const ids = b.lineup[role] || [];
@@ -72,7 +72,7 @@ function lineupRowsHTML(b: Body) {
         .map((id) =>
           id
             ? card(role, PLAYERS.get(id) || "—", id === b.captainId!)
-            : `<div style="display:inline-block;min-width:140px;max-width:200px;
+            : `<div style="display:inline-block;min-width:150px;max-width:210px;
                  border:2px dashed rgba(255,255,255,.85);border-radius:12px;color:#fff;
                  padding:10px 12px;margin:6px;text-align:center;">—</div>`
         )
@@ -88,9 +88,9 @@ function lineupRowsHTML(b: Body) {
     .join("");
 }
 
-// ====== VERSIONES DE EMAIL ======
+// ===== Emails =====
 
-// Participante: mini-campo + formación + Instagram/regla
+// Participante (HTML bonito)
 function buildParticipantHtml(b: Body) {
   const rows = lineupRowsHTML(b);
   return `<!doctype html>
@@ -134,13 +134,10 @@ function buildParticipantHtml(b: Body) {
 </html>`;
 }
 
-// Participante: texto plano (fallback)
+// Participante (texto)
 function buildParticipantText(b: Body) {
   const lines = roleOrder
-    .map((r) => {
-      const items = (b.lineup[r] || []).map((id) => `- ${id ? PLAYERS.get(id) || "—" : "—"}`).join("\n");
-      return `${r}:\n${items}`;
-    })
+    .map((r) => (b.lineup[r] || []).map((id) => `- ${id ? PLAYERS.get(id) || "—" : "—"}`).join("\n"))
     .join("\n\n");
   return `Fantasy – Amigos del Duero · Confirmación de envío
 
@@ -152,7 +149,7 @@ Resultados y clasificación: Instagram @fansamigosdelduero
 Regla: un equipo por jornada (si envías varios con el mismo nombre, cuenta el último).`;
 }
 
-// Organización: SOLO alineación + nombre/email + formación
+// Organización (solo lo esencial)
 function buildOrgHtml(b: Body) {
   const rows = lineupRowsHTML(b);
   return `<!doctype html>
@@ -187,10 +184,7 @@ function buildOrgHtml(b: Body) {
 
 function buildOrgText(b: Body) {
   const lines = roleOrder
-    .map((r) => {
-      const items = (b.lineup[r] || []).map((id) => `- ${id ? PLAYERS.get(id) || "—" : "—"}`).join("\n");
-      return `${r}:\n${items}`;
-    })
+    .map((r) => (b.lineup[r] || []).map((id) => `- ${id ? PLAYERS.get(id) || "—" : "—"}`).join("\n"))
     .join("\n\n");
   return `Fantasy – Amigos del Duero · Nuevo equipo
 
@@ -200,28 +194,20 @@ Formación: ${b.formation}
 ${lines}`;
 }
 
-// ====== Handler API ======
+// ===== Handler API =====
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
 
-  const {
-    formation,
-    lineup,
-    captainId,
-    participantName,
-    participantEmail,
-    botField,
-  } = req.body as Body;
+  const { formation, lineup, captainId, participantName, participantEmail, botField } = req.body as Body;
 
-  // Honeypot anti-bots
-  if (botField && botField.trim() !== "")
-    return res.status(200).json({ ok: true, skipped: "honeypot" });
+  // Honeypot
+  if (botField && botField.trim() !== "") return res.status(200).json({ ok: true, skipped: "honeypot" });
 
   // Validaciones
   if (!formation || !lineup || !participantName || !participantEmail)
     return res.status(400).json({ ok: false, error: "Campos obligatorios faltan" });
-  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(participantEmail);
-  if (!emailOk) return res.status(400).json({ ok: false, error: "Email no válido" });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(participantEmail))
+    return res.status(400).json({ ok: false, error: "Email no válido" });
 
   const counts = formation.split("-").map((n) => parseInt(n, 10));
   const needed = counts.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
@@ -229,20 +215,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (chosen !== needed) return res.status(400).json({ ok: false, error: "Alineación incompleta" });
   if (!captainId) return res.status(400).json({ ok: false, error: "Selecciona capitana" });
 
-  const payload: Body = {
-    formation,
-    lineup,
-    captainId,
-    participantName,
-    participantEmail,
-  };
+  const payload: Body = { formation, lineup, captainId, participantName, participantEmail };
 
   const participantText = buildParticipantText(payload);
   const participantHtml = buildParticipantHtml(payload);
   const orgText = buildOrgText(payload);
   const orgHtml = buildOrgHtml(payload);
 
-  // --- SendGrid ---
   const apiKey = process.env.SENDGRID_API_KEY;
   if (!apiKey) return res.status(500).json({ ok: false, error: "Falta SENDGRID_API_KEY" });
   sgMail.setApiKey(apiKey);
@@ -251,7 +230,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const FROM = "info@fantasyaduero.es";
 
   try {
-    // 1) Email a la organización (solo lo esencial)
     const mailToOrg = sgMail.send({
       to: ORG_TO,
       from: FROM,
@@ -261,7 +239,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       replyTo: participantEmail,
     });
 
-    // 2) Email de confirmación al participante
     const mailToParticipant = sgMail.send({
       to: participantEmail,
       from: FROM,
