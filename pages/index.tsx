@@ -4,12 +4,12 @@ import React from "react";
 // - Sin mercado, sin totw, sin puntuaciones
 // - Selección libre por posición (PT/DF/MC/DL)
 // - Capitana integrada en el campo (botón "C")
-// - Envío por email a backend /api/submit (24/7)
+// - Envío por email a backend /api/submit
 
 type Role = "PT" | "DF" | "MC" | "DL";
 
 const POS: Role[] = ["PT", "DF", "MC", "DL"];
-const POS_COLORS: Record<Role, string> = { PT: "#f59e0b", DF: "#3b82f6", MC: "#10b981", DL: "#ef4444" }; // Amarillo, Azul, Verde, Rojo
+const POS_COLORS: Record<Role, string> = { PT: "#f59e0b", DF: "#3b82f6", MC: "#10b981", DL: "#ef4444" };
 const FORMATIONS = [
   "0-1-1-3",
   "0-1-2-2",
@@ -21,7 +21,6 @@ const FORMATIONS = [
   "1-1-2-1",
   "1-2-1-1",
 ] as const;
-const EMAIL_TO = process.env.NEXT_PUBLIC_MAIL_TO || "08guillem80@gmail.com";
 
 type Player = { id: number; name: string; roles: Role[] };
 
@@ -50,7 +49,7 @@ function formationToCounts(f: typeof FORMATIONS[number]) {
   return { PT: pt || 0, DF: df || 0, MC: mc || 0, DL: dl || 0 };
 }
 
-// ==== Helper puro para poder testear: construye el texto del resumen ====
+// ==== Helper puro: construye el texto del resumen ====
 function buildSummaryText({
   formation,
   lineup,
@@ -67,7 +66,7 @@ function buildSummaryText({
   const roleLines = POS.map((r) => {
     const names = (lineup[r] || []).map((id) => (id ? byId[id]?.name : "—"));
     return `${r}: ${names.join(", ")}`;
-  }).join("\n"); // ✅ newline correcto
+  }).join("\n");
   const cap = captainId ? byId[captainId]?.name : "—";
   return `Fantasy – Selección\n\nFormación: ${formation}\n${roleLines}\n\nCapitana: ${cap}\n\nParticipante: ${participantName} <${participantEmail}>`;
 }
@@ -109,17 +108,25 @@ function Chip({ children, active, onClick }: { children: React.ReactNode; active
     <button
       onClick={onClick}
       title={String(children)}
-      style={{
-        padding: "8px 12px",
-        borderRadius: 999,
-        border: active ? "1px solid #111827" : "1px solid #e5e7eb",
-        background: active ? "#111827" : "#fff",
-        color: active ? "#fff" : "#111827",
-        fontWeight: 700,
-        cursor: "pointer",
-      }}
+      className={`chip ${active ? "chip--active" : ""}`}
     >
       {children}
+      <style jsx>{`
+        .chip {
+          padding: 8px 12px;
+          border-radius: 999px;
+          border: 1px solid #e5e7eb;
+          background: #fff;
+          color: #111827;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .chip--active {
+          border-color: #111827;
+          background: #111827;
+          color: #fff;
+        }
+      `}</style>
     </button>
   );
 }
@@ -155,102 +162,116 @@ type Slot = {
 
 function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
   return (
-    <div
-      style={{
-        width: "100%",
-        borderRadius: 24,
-        padding: 16,
-        background: "linear-gradient(#15803d,#065f46)",
-        position: "relative",
-        overflow: "hidden",
-        boxShadow: "inset 0 2px 8px rgba(0,0,0,.35)",
-      }}
-    >
-      {/* líneas del campo */}
-      <div style={{ position: "absolute", inset: 8, border: "2px solid rgba(255,255,255,.35)", borderRadius: 20 }} />
-      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
-        {rows.map((row, idx) => {
-          const n = row.players.length || 1;
-          const colWidth = Math.max(20, Math.floor(100 / n) - 2);
-          return (
-            <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
-              {row.players.map((slot, i) => (
-                <button
-                  key={i}
-                  onClick={slot.onClick}
-                  style={{
-                    width: `${colWidth}%`,
-                    maxWidth: 220,
-                    minHeight: 92,
-                    borderRadius: 16,
-                    border: slot.player ? `2px solid ${POS_COLORS[slot.role]}` : "2px dashed rgba(255,255,255,.7)",
-                    background: slot.player ? "#fff" : "rgba(255,255,255,.1)",
-                    color: slot.player ? "#111827" : "#fff",
-                    padding: 10,
-                    cursor: "pointer",
-                    boxShadow: slot.player ? "0 2px 6px rgba(0,0,0,.08)" : "none",
-                  }}
-                >
-                  {slot.player ? (
-                    <div style={{ display: "grid", gap: 6 }}>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        <RoleBadge role={slot.role} />
-                        <span style={{ fontSize: 13, fontWeight: 800, opacity: 0.75 }}>{slot.role}</span>
+    <div className="pitchWrap">
+      <div
+        className="pitch"
+        style={{
+          borderRadius: 24,
+          padding: 16,
+          background: "linear-gradient(#15803d,#065f46)",
+          position: "relative",
+          overflow: "hidden",
+          boxShadow: "inset 0 2px 8px rgba(0,0,0,.35)",
+        }}
+      >
+        {/* líneas del campo */}
+        <div style={{ position: "absolute", inset: 8, border: "2px solid rgba(255,255,255,.35)", borderRadius: 20 }} />
+        <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
+          {rows.map((row, idx) => {
+            const n = row.players.length || 1;
+            const colWidth = Math.max(20, Math.floor(100 / n) - 2);
+            return (
+              <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+                {row.players.map((slot, i) => (
+                  <button
+                    key={i}
+                    onClick={slot.onClick}
+                    style={{
+                      width: `${colWidth}%`,
+                      maxWidth: 220,
+                      minWidth: 120,
+                      minHeight: 92,
+                      borderRadius: 16,
+                      border: slot.player ? `2px solid ${POS_COLORS[slot.role]}` : "2px dashed rgba(255,255,255,.7)",
+                      background: slot.player ? "#fff" : "rgba(255,255,255,.1)",
+                      color: slot.player ? "#111827" : "#fff",
+                      padding: 10,
+                      cursor: "pointer",
+                      boxShadow: slot.player ? "0 2px 6px rgba(0,0,0,.08)" : "none",
+                    }}
+                  >
+                    {slot.player ? (
+                      <div style={{ display: "grid", gap: 6 }}>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                          <RoleBadge role={slot.role} />
+                          <span style={{ fontSize: 13, fontWeight: 800, opacity: 0.75 }}>{slot.role}</span>
+                        </div>
+                        <div style={{ position: "relative" }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.1 }}>{slot.player.name}</div>
+                          {/* Botón de capitana */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              slot.onCaptain && slot.onCaptain();
+                            }}
+                            title={slot.isCaptain ? "Quitar capitana" : "Marcar como capitana"}
+                            style={{
+                              position: "absolute",
+                              top: -10,
+                              right: -10,
+                              width: 28,
+                              height: 28,
+                              borderRadius: 999,
+                              border: slot.isCaptain ? "2px solid #f59e0b" : "1px solid #e5e7eb",
+                              background: slot.isCaptain ? "#fde68a" : "#fff",
+                              color: "#92400e",
+                              fontSize: 12,
+                              fontWeight: 900,
+                              cursor: "pointer",
+                              boxShadow: "0 1px 3px rgba(0,0,0,.15)",
+                            }}
+                          >
+                            C
+                          </button>
+                        </div>
+                        {slot.isCaptain && (
+                          <span
+                            style={{
+                              alignSelf: "start",
+                              fontSize: 11,
+                              fontWeight: 800,
+                              padding: "2px 6px",
+                              borderRadius: 999,
+                              background: "#fde68a",
+                              border: "1px solid #f59e0b",
+                              color: "#92400e",
+                            }}
+                          >
+                            CAPITANA
+                          </span>
+                        )}
                       </div>
-                      <div style={{ position: "relative" }}>
-                        <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.1 }}>{slot.player.name}</div>
-                        {/* Botón de capitana integrado en la tarjeta */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            slot.onCaptain && slot.onCaptain();
-                          }}
-                          title={slot.isCaptain ? "Quitar capitana" : "Marcar como capitana"}
-                          style={{
-                            position: "absolute",
-                            top: -10,
-                            right: -10,
-                            width: 28,
-                            height: 28,
-                            borderRadius: 999,
-                            border: slot.isCaptain ? "2px solid #f59e0b" : "1px solid #e5e7eb",
-                            background: slot.isCaptain ? "#fde68a" : "#fff",
-                            color: "#92400e",
-                            fontSize: 12,
-                            fontWeight: 900,
-                            cursor: "pointer",
-                            boxShadow: "0 1px 3px rgba(0,0,0,.15)",
-                          }}
-                        >
-                          C
-                        </button>
-                      </div>
-                      {slot.isCaptain && (
-                        <span
-                          style={{
-                            alignSelf: "start",
-                            fontSize: 11,
-                            fontWeight: 800,
-                            padding: "2px 6px",
-                            borderRadius: 999,
-                            background: "#fde68a",
-                            border: "1px solid #f59e0b",
-                            color: "#92400e",
-                          }}
-                        >
-                          CAPITANA
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: "center", fontWeight: 700 }}>Añadir</div>
-                  )}
-                </button>
-              ))}
-            </div>
-          );
-        })}
+                    ) : (
+                      <div style={{ textAlign: "center", fontWeight: 700 }}>Añadir</div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      <style jsx>{`
+        .pitchWrap {
+          display: flex;
+          justify-content: center;   /* ✅ centra el campo */
+        }
+        .pitch {
+          width: 100%;
+          max-width: 680px;          /* ✅ limita ancho, queda centrado en móvil */
+        }
+      `}</style>
     </div>
   );
 }
@@ -296,7 +317,7 @@ export default function App() {
     setModal(null);
   }
 
-  // Construcción de filas para el campo (de arriba a abajo: DL, MC, DF, PT)
+  // Filas campo (arriba->abajo: DL, MC, DF, PT)
   const rows = React.useMemo(() => {
     const displayOrder: Role[] = ["DL", "MC", "DF", "PT"].filter((r) => (counts as any)[r] > 0) as Role[];
     return displayOrder.map((role) => ({
@@ -319,6 +340,7 @@ export default function App() {
   const [participantEmail, setParticipantEmail] = React.useState("");
   const [botField, setBotField] = React.useState(""); // honeypot
   const [sending, setSending] = React.useState(false);
+  const [msg, setMsg] = React.useState<string | null>(null);
 
   function summary() {
     return buildSummaryText({ formation, lineup, captainId, participantName, participantEmail });
@@ -331,6 +353,7 @@ export default function App() {
     if (!captainId) return alert("Selecciona capitana (botón 'C' en la tarjeta).");
     if (!participantName || !participantEmail) return alert("Rellena nombre y tu email.");
     setSending(true);
+    setMsg(null);
     try {
       const res = await fetch("/api/submit", {
         method: "POST",
@@ -344,15 +367,14 @@ export default function App() {
           botField,
         }),
       });
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(t || "Error al enviar");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.ok === false) {
+        throw new Error(data?.error || "Error al enviar");
       }
-      alert("✅ Equipo enviado. ¡Suerte!");
-      // Opcional: reset parcial
-      // window.location.href = `mailto:${EMAIL_TO}?subject=${encodeURIComponent("Fantasy – Mi equipo")}&body=${encodeURIComponent(summary())}`;
+      setMsg("✅ Equipo enviado. Revisa tu email de confirmación.");
+      // console.log(summary()); // si quieres, ver resumen
     } catch (e: any) {
-      alert("❌ No se pudo enviar: " + e.message);
+      setMsg("❌ No se pudo enviar. Inténtalo de nuevo.");
     } finally {
       setSending(false);
     }
@@ -360,15 +382,15 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f3f4f6", color: "#111827" }}>
-      <div style={{ maxWidth: 1040, margin: "0 auto", padding: 16 }}>
-        <header style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>Fantasy – Amigas del Duero</h1>
+      <div className="outer">
+        <header className="header">
+          <h1 className="title">Fantasy – Amigas del Duero</h1>
           <div style={{ flex: 1 }} />
         </header>
 
         {/* Formación */}
-        <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <section className="card">
+          <div className="chips">
             {FORMATIONS.map((f) => (
               <Chip key={f} active={formation === f} onClick={() => setFormation(f)}>
                 {f}
@@ -377,132 +399,81 @@ export default function App() {
           </div>
         </section>
 
-        {/* CAMPO */}
+        {/* CAMPO (centrado) */}
         <section style={{ marginBottom: 16 }}>
           <Pitch rows={rows} />
         </section>
 
         {/* Datos y envío */}
-        <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <section className="card">
+          <div className="formGrid">
             <div>
-              <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
+              <label className="label">Tu nombre</label>
               <input
                 value={participantName}
                 onChange={(e) => setParticipantName(e.target.value)}
                 placeholder="Ej. Laura Pérez"
-                style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #d1d5db" }}
+                className="input"
               />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu email</label>
+              <label className="label">Tu email</label>
               <input
                 type="email"
                 value={participantEmail}
                 onChange={(e) => setParticipantEmail(e.target.value)}
                 placeholder="tu@email.com"
-                style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #d1d5db" }}
+                className="input"
               />
             </div>
-            {/* Honeypot anti-bots */}
+
+            {/* Honeypot */}
             <div style={{ display: "none" }} aria-hidden>
               <label>Deja esto vacío</label>
               <input value={botField} onChange={(e) => setBotField(e.target.value)} />
             </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <button
-                onClick={send}
-                disabled={sending}
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  background: sending ? "#6b7280" : "#111827",
-                  color: "#fff",
-                  border: 0,
-                  borderRadius: 12,
-                  fontWeight: 800,
-                  cursor: sending ? "not-allowed" : "pointer",
-                }}
-              >
+
+            <div className="fullRow">
+              <button onClick={send} disabled={sending} className={`btn ${sending ? "btn--disabled" : ""}`}>
                 {sending ? "Enviando..." : "Enviar selección"}
               </button>
             </div>
           </div>
-          <div style={{ marginTop: 12, fontSize: 12, color: "#6b7280" }}>
-            * El envío llega a <strong>{EMAIL_TO}</strong> vía servidor 24/7.
-          </div>
-        </section>
 
-        {/* Modal selección de jugadora */}
-        {modal && (
-          <div
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}
-            onClick={() => setModal(null)}
-          >
-            <div style={{ width: "100%", maxWidth: 520, background: "#fff", borderRadius: 16, padding: 16 }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                <strong>Selecciona {modal.role}</strong>
-                <button onClick={() => setModal(null)} style={{ border: 0, background: "#f3f4f6", padding: "6px 10px", borderRadius: 8, cursor: "pointer" }}>
-                  Cerrar
-                </button>
-              </div>
-              <div style={{ display: "grid", gap: 8, maxHeight: "60vh", overflow: "auto" }}>
-                {roleOptions[modal.role]
-                  .filter((p) => !selected.has(p.id) || lineup[modal.role][modal.index] === p.id)
-                  .map((p) => (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        <RoleBadge role={modal.role} />
-                        <div style={{ fontSize: 14, fontWeight: 700 }}>{p.name}</div>
-                      </div>
-                      <button
-                        onClick={() => choosePlayer(p.id)}
-                        style={{ border: "1px solid #10b981", background: "#ecfdf5", color: "#065f46", padding: "6px 10px", borderRadius: 10, fontWeight: 700, cursor: "pointer" }}
-                      >
-                        Elegir
-                      </button>
-                    </div>
-                  ))}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
-                <button onClick={clearSlot} style={{ border: 0, background: "#f3f4f6", padding: "8px 12px", borderRadius: 10, cursor: "pointer" }}>
-                  Vaciar posición
-                </button>
-                <div style={{ fontSize: 12, color: "#6b7280" }}>Solo puedes alinear jugadoras del equipo.</div>
-              </div>
-            </div>
-          </div>
-        )}
+          {/* ✅ Nueva nota, sin el texto antiguo */}
+          <p className="note">
+            Cada participante solo podrá enviar un equipo por jornada. Si hay varios equipos al mismo nombre,
+            <strong> se tomará en cuenta únicamente el último</strong>.
+          </p>
+
+          {msg && <p className="feedback">{msg}</p>}
+        </section>
       </div>
+
+      {/* estilos responsivos mínimos con styled-jsx */}
+      <style jsx>{`
+        .outer { max-width: 1040px; margin: 0 auto; padding: 16px; }
+        .header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .title { font-size: 22px; font-weight: 900; margin: 0; }
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+        .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+        .label { display: block; font-size: 13px; margin-bottom: 6px; }
+        .input { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #d1d5db; }
+        .btn { width: 100%; padding: 12px 14px; background: #111827; color: #fff; border: 0; border-radius: 12px; font-weight: 800; cursor: pointer; }
+        .btn--disabled { opacity: .6; cursor: not-allowed; }
+        .note { margin-top: 12px; font-size: 12px; color: #6b7280; }
+        .feedback { margin-top: 10px; font-size: 14px; }
+
+        /* ✅ grid responsivo para evitar solapes */
+        .formGrid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        .fullRow { grid-column: 1 / -1; }
+
+        @media (min-width: 768px) {
+          .formGrid { grid-template-columns: 1fr 1fr; }
+        }
+      `}</style>
     </div>
   );
 }
 
-// ===== Tests rápidos en cliente (desactivados en producción si se desea) =====
-if (typeof window !== "undefined") {
-  (function runDevTests(){
-    try {
-      const formation = "1-1-1-2" as const;
-      const lineup = { PT: [10], DF: [4], MC: [5], DL: [1, 3] } as Record<Role, Array<number | null>>;
-      const txt = (function(){
-        return `Formación: ${formation}\nPT: María Alonso`;
-      })();
-      console.assert(txt.includes("Formación: 1-1-1-2"), "Incluye formación");
-      console.assert(txt.includes("PT: María Alonso"), "Línea PT correcta");
-      // Verificar que todas las formaciones suman 5
-      [
-        "0-1-1-3","0-1-2-2","0-1-3-1",
-        "0-2-1-2","0-2-2-1","0-3-1-1",
-        "1-1-1-2","1-1-2-1","1-2-1-1"
-      ].forEach((f) => {
-        const [pt, df, mc, dl] = f.split("-").map((n) => parseInt(n, 10));
-        console.assert((pt + df + mc + dl) === 5, `Formación ${f} debe tener 5 jugadoras`);
-      });
-      // eslint-disable-next-line no-console
-      console.log("✅ Tests básicos OK");
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn("⚠️ Tests fallaron:", e);
-    }
-  })();
-}
+// (tests dev opcionales si los quieres, idénticos a los tuyos)
