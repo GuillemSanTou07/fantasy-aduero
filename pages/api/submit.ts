@@ -1,16 +1,18 @@
+// pages/api/submit.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { Resend } from "resend";
 
+// Tipos mínimos para no pelearse con TS
+type Maybe<T> = T | null | undefined;
 type Lineup = { PT:(number|null)[]; DF:(number|null)[]; MC:(number|null)[]; DL:(number|null)[] };
 
 const resend = new Resend(process.env.RESEND_API_KEY ?? "");
 
-function buildSummaryText({
-  formation, lineup, captainId, participantName, participantEmail,
-}: {
-  formation: string; lineup: Lineup; captainId: number|null;
+function buildSummaryText(opts: {
+  formation: string; lineup: Lineup; captainId: Maybe<number>;
   participantName: string; participantEmail: string;
 }) {
+  const { formation, lineup, captainId, participantName, participantEmail } = opts;
   const POS = ["PT","DF","MC","DL"] as const;
   const byId: Record<number, string> = {
     1:"Ari Rodríguez",2:"Paula Díaz",3:"Ana García",4:"Ana Fernández",5:"Nata Martín",6:"Celia Huon",
@@ -18,10 +20,11 @@ function buildSummaryText({
     13:"Jasmine Sayagués",14:"Alba Muñiz",
   };
   const roleLines = POS.map((r) => {
-    const names = (lineup as any)[r].map((id:number|null)=> id ? byId[id] : "—");
+    const names = (lineup as any)[r].map((id: number|null) => (id ? byId[id] : "—"));
     return `${r}: ${names.join(", ")}`;
   }).join("\n");
-  const cap = captainId ? byId[captainId] : "—";
+  const cap = (captainId && byId[captainId]) ? byId[captainId] : "—";
+
   return `Fantasy – Selección
 
 Formación: ${formation}
@@ -35,20 +38,24 @@ Participante: ${participantName} <${participantEmail}>`;
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ ok:false, error:"Method not allowed" });
 
-  const { formation, lineup, captainId, participantName, participantEmail, botField } = req.body || {};
-  const from = process.env.MAIL_FROM || "";
-  const to = process.env.MAIL_TO || "";
+  const { formation, lineup, captainId, participantName, participantEmail, botField } = (req.body ?? {}) as any;
 
+  const from = process.env.MAIL_FROM || "";
+  const to   = process.env.MAIL_TO   || "";
+
+  // ---- LOG INICIAL ----
   console.log("[submit] start", {
     hasApiKey: !!process.env.RESEND_API_KEY, from, to,
-    botField, hasLineup: !!lineup
+    botField, hasLineup: !!lineup, formation, participantName, participantEmail
   });
 
+  // Honeypot
   if (typeof botField === "string" && botField.trim() !== "") {
-    console.warn("[submit] honeypot triggered, skipping send");
+    console.warn("[submit] honeypot triggered");
     return res.status(200).json({ ok:true, skipped:"honeypot" });
   }
 
+  // Validaciones mínimas
   if (!from || !to) {
     console.error("[submit] missing FROM/TO", { from, to });
     return res.status(500).json({ ok:false, error:"Server missing MAIL_FROM / MAIL_TO" });
@@ -59,28 +66,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const text = buildSummaryText({
-    formation, lineup,
+    formation,
+    lineup,
     captainId: typeof captainId === "number" ? captainId : null,
-    participantName, participantEmail
+    participantName,
+    participantEmail,
   });
 
-try {
-  console.log("[submit] calling Resend.emails.send");
-  const { data, error } = await resend.emails.send({
-    from,
-    to,
-    subject: "Fantasy – Nuevo equipo enviado",
-    text,
-  });
+  try {
+    console.log("[submit] calling Resend.emails.send");
+    // Tipado laxo para evitar errores de versión de la lib
+    const result: any = await (resend as any).emails.send({
+      from,
+      to,
+      subject: "Fantasy – Nuevo equipo enviado",
+      text,
+      // reply_to: participantEmail, // opcional
+    });
 
-  if (error) {
-    console.error("[submit] Resend error:", JSON.stringify(error, null, 2));
-    return res.status(500).json({ ok: false, error });
+    // La lib nueva devuelve { data, error }; la vieja puede devolver otra forma.
+    const data  = result?.data ?? result?.id ?? null;
+    const error = result?.error ?? null;
+
+    if (error) {
+      console.error("[submit] Resend error:", JSON.stringify(error, null, 2));
+      return res.status(500).json({ ok:false, error });
+    }
+
+    console.log("[submit] resend ok:", JSON.stringify(data, null, 2));
+    return res.status(200).json({ ok:true, id: (typeof data === "object" ? data?.id ?? null : data) });
+  } catch (e: any) {
+    // Captura de error detallada
+    const errObj = { message: e?.message ?? String(e), stack: e?.stack ?? null };
+    console.error("[submit] unexpected error:", JSON.stringify(errObj, null, 2));
+    return res.status(500).json({ ok:false, error: errObj });
   }
-
-  console.log("[submit] resend data", data);
-  return res.status(200).json({ ok: true, id: data?.id ?? null });
-} catch (e: any) {
-  console.error("[submit] unexpected error:", e);
-  return res.status(500).json({ ok: false, error: e?.message || e });
 }
