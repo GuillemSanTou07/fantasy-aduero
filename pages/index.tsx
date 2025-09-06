@@ -1,25 +1,11 @@
 import React from "react";
 
-// ===== App simple con selección en CAMPO (Next.js + TS) =====
-// - Sin mercado, sin totw, sin puntuaciones
-// - Selección libre por posición (PT/DF/MC/DL)
-// - Capitana integrada en el campo (botón "C")
-// - Envío por email a backend /api/submit
-
 type Role = "PT" | "DF" | "MC" | "DL";
 
 const POS: Role[] = ["PT", "DF", "MC", "DL"];
 const POS_COLORS: Record<Role, string> = { PT: "#f59e0b", DF: "#3b82f6", MC: "#10b981", DL: "#ef4444" };
 const FORMATIONS = [
-  "0-1-1-3",
-  "0-1-2-2",
-  "0-1-3-1",
-  "0-2-1-2",
-  "0-2-2-1",
-  "0-3-1-1",
-  "1-1-1-2",
-  "1-1-2-1",
-  "1-2-1-1",
+  "0-1-1-3","0-1-2-2","0-1-3-1","0-2-1-2","0-2-2-1","0-3-1-1","1-1-1-2","1-1-2-1","1-2-1-1",
 ] as const;
 
 type Player = { id: number; name: string; roles: Role[] };
@@ -49,13 +35,9 @@ function formationToCounts(f: typeof FORMATIONS[number]) {
   return { PT: pt || 0, DF: df || 0, MC: mc || 0, DL: dl || 0 };
 }
 
-// ==== Helper puro: construye el texto del resumen ====
+// ===== Helper para el texto (si lo necesitas en algún sitio) =====
 function buildSummaryText({
-  formation,
-  lineup,
-  captainId,
-  participantName,
-  participantEmail,
+  formation, lineup, captainId, participantName, participantEmail,
 }: {
   formation: typeof FORMATIONS[number];
   lineup: Record<Role, Array<number | null>>;
@@ -68,7 +50,7 @@ function buildSummaryText({
     return `${r}: ${names.join(", ")}`;
   }).join("\n");
   const cap = captainId ? byId[captainId]?.name : "—";
-  return `Fantasy – Selección\n\nFormación: ${formation}\n${roleLines}\n\nCapitana: ${cap}\n\nParticipante: ${participantName} <${participantEmail}>`;
+  return `Fantasy – Amigos del Duero\n\nFormación: ${formation}\n${roleLines}\n\nCapitana: ${cap}\n\nParticipante: ${participantName} <${participantEmail}>`;
 }
 
 function useLineup(formation: typeof FORMATIONS[number]) {
@@ -78,10 +60,7 @@ function useLineup(formation: typeof FORMATIONS[number]) {
     [counts]
   );
   const [lineup, setLineup] = React.useState<Record<Role, Array<number | null>>>({
-    PT: makeEmpty("PT"),
-    DF: makeEmpty("DF"),
-    MC: makeEmpty("MC"),
-    DL: makeEmpty("DL"),
+    PT: makeEmpty("PT"), DF: makeEmpty("DF"), MC: makeEmpty("MC"), DL: makeEmpty("DL"),
   });
 
   React.useEffect(() => {
@@ -105,27 +84,14 @@ function useLineup(formation: typeof FORMATIONS[number]) {
 
 function Chip({ children, active, onClick }: { children: React.ReactNode; active?: boolean; onClick?: () => void }) {
   return (
-    <button
-      onClick={onClick}
-      title={String(children)}
-      className={`chip ${active ? "chip--active" : ""}`}
-    >
+    <button onClick={onClick} title={String(children)} className={`chip ${active ? "chip--active" : ""}`}>
       {children}
       <style jsx>{`
         .chip {
-          padding: 8px 12px;
-          border-radius: 999px;
-          border: 1px solid #e5e7eb;
-          background: #fff;
-          color: #111827;
-          font-weight: 700;
-          cursor: pointer;
+          padding: 8px 12px; border-radius: 999px; border: 1px solid #e5e7eb;
+          background: #fff; color: #111827; font-weight: 700; cursor: pointer;
         }
-        .chip--active {
-          border-color: #111827;
-          background: #111827;
-          color: #fff;
-        }
+        .chip--active { border-color: #111827; background: #111827; color: #fff; }
       `}</style>
     </button>
   );
@@ -135,16 +101,9 @@ function RoleBadge({ role }: { role: Role }) {
   return (
     <span
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 28,
-        height: 28,
-        borderRadius: 999,
-        background: POS_COLORS[role],
-        color: "#fff",
-        fontSize: 12,
-        fontWeight: 900,
+        display: "inline-block", width: 24, height: 24, lineHeight: "24px",
+        textAlign: "center", borderRadius: 999, background: POS_COLORS[role],
+        color: "#fff", fontSize: 12, fontWeight: 900, verticalAlign: "middle"
       }}
     >
       {role}
@@ -163,18 +122,10 @@ type Slot = {
 function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
   return (
     <div className="pitchWrap">
-      <div
-        className="pitch"
-        style={{
-          borderRadius: 24,
-          padding: 16,
-          background: "linear-gradient(#15803d,#065f46)",
-          position: "relative",
-          overflow: "hidden",
-          boxShadow: "inset 0 2px 8px rgba(0,0,0,.35)",
-        }}
-      >
-        {/* líneas del campo */}
+      <div className="pitch" style={{
+        borderRadius: 24, padding: 16, background: "linear-gradient(#15803d,#065f46)",
+        position: "relative", overflow: "hidden", boxShadow: "inset 0 2px 8px rgba(0,0,0,.35)",
+      }}>
         <div style={{ position: "absolute", inset: 8, border: "2px solid rgba(255,255,255,.35)", borderRadius: 20 }} />
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
           {rows.map((row, idx) => {
@@ -187,68 +138,34 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                     key={i}
                     onClick={slot.onClick}
                     style={{
-                      width: `${colWidth}%`,
-                      maxWidth: 220,
-                      minWidth: 120,
-                      minHeight: 92,
+                      width: `${colWidth}%`, maxWidth: 220, minWidth: 120, minHeight: 92,
                       borderRadius: 16,
                       border: slot.player ? `2px solid ${POS_COLORS[slot.role]}` : "2px dashed rgba(255,255,255,.7)",
                       background: slot.player ? "#fff" : "rgba(255,255,255,.1)",
                       color: slot.player ? "#111827" : "#fff",
-                      padding: 10,
-                      cursor: "pointer",
+                      padding: 10, cursor: "pointer",
                       boxShadow: slot.player ? "0 2px 6px rgba(0,0,0,.08)" : "none",
+                      position: "relative",
                     }}
                   >
                     {slot.player ? (
-                      <div style={{ display: "grid", gap: 6 }}>
-                        <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                          <RoleBadge role={slot.role} />
-                          <span style={{ fontSize: 13, fontWeight: 800, opacity: 0.75 }}>{slot.role}</span>
-                        </div>
-                        <div style={{ position: "relative" }}>
-                          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.1 }}>{slot.player.name}</div>
-                          {/* Botón de capitana */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              slot.onCaptain && slot.onCaptain();
-                            }}
-                            title={slot.isCaptain ? "Quitar capitana" : "Marcar como capitana"}
-                            style={{
-                              position: "absolute",
-                              top: -10,
-                              right: -10,
-                              width: 28,
-                              height: 28,
-                              borderRadius: 999,
-                              border: slot.isCaptain ? "2px solid #f59e0b" : "1px solid #e5e7eb",
-                              background: slot.isCaptain ? "#fde68a" : "#fff",
-                              color: "#92400e",
-                              fontSize: 12,
-                              fontWeight: 900,
-                              cursor: "pointer",
-                              boxShadow: "0 1px 3px rgba(0,0,0,.15)",
-                            }}
-                          >
-                            C
-                          </button>
-                        </div>
+                      <div style={{ display: "inline-flex", alignItems: "center" }}>
+                        <RoleBadge role={slot.role} />
+                        <span style={{
+                          display: "inline-block", marginLeft: 12, fontSize: 15, fontWeight: 700,
+                          height: 24, lineHeight: "24px", verticalAlign: "middle", whiteSpace: "nowrap"
+                        }}>
+                          {slot.player.name}
+                        </span>
+                        {/* C de capitana arriba-derecha, sobresaliendo un poco */}
                         {slot.isCaptain && (
-                          <span
-                            style={{
-                              alignSelf: "start",
-                              fontSize: 11,
-                              fontWeight: 800,
-                              padding: "2px 6px",
-                              borderRadius: 999,
-                              background: "#fde68a",
-                              border: "1px solid #f59e0b",
-                              color: "#92400e",
-                            }}
-                          >
-                            CAPITANA
-                          </span>
+                          <span style={{
+                            position: "absolute", top: -10, right: -10,
+                            display: "inline-block", width: 22, height: 22, lineHeight: "22px",
+                            textAlign: "center", borderRadius: 999,
+                            background: "#fde68a", border: "2px solid #f59e0b", color: "#92400e",
+                            fontWeight: 900, fontSize: 12
+                          }}>C</span>
                         )}
                       </div>
                     ) : (
@@ -261,16 +178,9 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
           })}
         </div>
       </div>
-
       <style jsx>{`
-        .pitchWrap {
-          display: flex;
-          justify-content: center;   /* ✅ centra el campo */
-        }
-        .pitch {
-          width: 100%;
-          max-width: 680px;          /* ✅ limita ancho, queda centrado en móvil */
-        }
+        .pitchWrap { display: flex; justify-content: center; }
+        .pitch { width: 100%; max-width: 680px; }
       `}</style>
     </div>
   );
@@ -293,16 +203,11 @@ export default function App() {
     []
   );
 
-  function openSlot(role: Role, index: number) {
-    setModal({ role, index });
-  }
+  function openSlot(role: Role, index: number) { setModal({ role, index }); }
   function choosePlayer(id: number) {
     setLineup((prev) => {
       const next: Record<Role, Array<number | null>> = { ...prev, [modal!.role]: [...prev[modal!.role]] } as any;
-      // Evitar duplicados quitándolo de cualquier sitio previo
-      POS.forEach((r) => {
-        next[r] = next[r].map((x) => (x === id ? null : x));
-      });
+      POS.forEach((r) => { next[r] = next[r].map((x) => (x === id ? null : x)); });
       next[modal!.role][modal!.index] = id;
       return next;
     });
@@ -317,7 +222,7 @@ export default function App() {
     setModal(null);
   }
 
-  // Filas campo (arriba->abajo: DL, MC, DF, PT)
+  // Filas del campo (DL, MC, DF, PT)
   const rows = React.useMemo(() => {
     const displayOrder: Role[] = ["DL", "MC", "DF", "PT"].filter((r) => (counts as any)[r] > 0) as Role[];
     return displayOrder.map((role) => ({
@@ -335,46 +240,38 @@ export default function App() {
     }));
   }, [counts, lineup, captainId]);
 
-  // Envío por email (via API)
+  // Formulario / envío
   const [participantName, setParticipantName] = React.useState("");
   const [participantEmail, setParticipantEmail] = React.useState("");
-  const [botField, setBotField] = React.useState(""); // honeypot
+  const [botField, setBotField] = React.useState("");
   const [sending, setSending] = React.useState(false);
-  const [msg, setMsg] = React.useState<string | null>(null);
+  const [msg, setMsg] = React.useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  function summary() {
-    return buildSummaryText({ formation, lineup, captainId, participantName, participantEmail });
-  }
+  // Estado de validez para habilitar el botón
+  const needed = (counts.PT + counts.DF + counts.MC + counts.DL) as number;
+  const chosen = Object.values(lineup).flat().filter(Boolean).length;
+  const isValid = chosen === needed && !!captainId && !!participantName && !!participantEmail;
 
-  async function send() {
-    const needed = (counts.PT + counts.DF + counts.MC + counts.DL) as number;
-    const chosen = Object.values(lineup).flat().filter(Boolean).length;
-    if (chosen !== needed) return alert("Completa todos los huecos.");
-    if (!captainId) return alert("Selecciona capitana (botón 'C' en la tarjeta).");
-    if (!participantName || !participantEmail) return alert("Rellena nombre y tu email.");
-    setSending(true);
+  // Modal confirmación
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+
+  async function doSend() {
     setMsg(null);
+    setSending(true);
     try {
       const res = await fetch("/api/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          formation,
-          lineup,
-          captainId,
-          participantName,
-          participantEmail,
-          botField,
+          formation, lineup, captainId, participantName, participantEmail, botField,
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || data?.ok === false) {
-        throw new Error(data?.error || "Error al enviar");
-      }
-      setMsg("✅ Equipo enviado. Revisa tu email de confirmación.");
-      // console.log(summary()); // si quieres, ver resumen
+      if (!res.ok || data?.ok === false) throw new Error(data?.error || "Error al enviar");
+      setMsg({ type: "ok", text: "✅ Enviado correctamente. Revisa tu email de confirmación." });
+      setConfirmOpen(false);
     } catch (e: any) {
-      setMsg("❌ No se pudo enviar. Inténtalo de nuevo.");
+      setMsg({ type: "err", text: "❌ No se pudo enviar. Inténtalo de nuevo." });
     } finally {
       setSending(false);
     }
@@ -384,11 +281,12 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: "#f3f4f6", color: "#111827" }}>
       <div className="outer">
         <header className="header">
-          <h1 className="title">Fantasy – Amigas del Duero</h1>
+          <h1 className="title">Fantasy – Amigos del Duero</h1>
+          <a href="https://instagram.com/fansamigosdelduero" target="_blank" rel="noreferrer" className="ig">@fansamigosdelduero</a>
           <div style={{ flex: 1 }} />
         </header>
 
-        {/* Formación */}
+        {/* Formaciones */}
         <section className="card">
           <div className="chips">
             {FORMATIONS.map((f) => (
@@ -399,12 +297,12 @@ export default function App() {
           </div>
         </section>
 
-        {/* CAMPO (centrado) */}
+        {/* Campo */}
         <section style={{ marginBottom: 16 }}>
           <Pitch rows={rows} />
         </section>
 
-        {/* Datos y envío */}
+        {/* Formulario */}
         <section className="card">
           <div className="formGrid">
             <div>
@@ -414,6 +312,7 @@ export default function App() {
                 onChange={(e) => setParticipantName(e.target.value)}
                 placeholder="Ej. Laura Pérez"
                 className="input"
+                required
               />
             </div>
             <div>
@@ -424,6 +323,7 @@ export default function App() {
                 onChange={(e) => setParticipantEmail(e.target.value)}
                 placeholder="tu@email.com"
                 className="input"
+                required
               />
             </div>
 
@@ -434,46 +334,77 @@ export default function App() {
             </div>
 
             <div className="fullRow">
-              <button onClick={send} disabled={sending} className={`btn ${sending ? "btn--disabled" : ""}`}>
-                {sending ? "Enviando..." : "Enviar selección"}
+              <button
+                onClick={() => setConfirmOpen(true)}
+                disabled={!isValid || sending}
+                className={`btn ${(!isValid || sending) ? "btn--disabled" : ""}`}
+              >
+                {sending ? "Enviando…" : "Confirmar y enviar"}
               </button>
             </div>
           </div>
 
-          {/* ✅ Nueva nota, sin el texto antiguo */}
           <p className="note">
             Cada participante solo podrá enviar un equipo por jornada. Si hay varios equipos al mismo nombre,
             <strong> se tomará en cuenta únicamente el último</strong>.
           </p>
 
-          {msg && <p className="feedback">{msg}</p>}
+          {msg && (
+            <div className={`alert ${msg.type === "ok" ? "ok" : "err"}`}>
+              {msg.text}
+            </div>
+          )}
         </section>
+
+        {/* Modal de confirmación */}
+        {confirmOpen && (
+          <div className="modalBack" onClick={() => setConfirmOpen(false)}>
+            <div className="modalCard" onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ margin: "0 0 8px" }}>Confirmar envío</h3>
+              <p style={{ marginTop: 0, color: "#4b5563" }}>
+                Formación <strong>{formation}</strong> · {participantName} &lt;{participantEmail}&gt;
+              </p>
+              <div style={{ marginBottom: 12 }}>
+                {/* Mini preview: solo texto simple */}
+                <pre style={{ whiteSpace: "pre-wrap", background: "#f9fafb", padding: 12, borderRadius: 8, border: "1px solid #e5e7eb", maxHeight: 200, overflow: "auto" }}>
+{buildSummaryText({ formation, lineup, captainId, participantName, participantEmail })}
+                </pre>
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button className="btnLight" onClick={() => setConfirmOpen(false)}>Volver</button>
+                <button className="btn" onClick={doSend} disabled={sending}>{sending ? "Enviando…" : "Enviar ahora"}</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* estilos responsivos mínimos con styled-jsx */}
       <style jsx>{`
         .outer { max-width: 1040px; margin: 0 auto; padding: 16px; }
         .header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
         .title { font-size: 22px; font-weight: 900; margin: 0; }
+        .ig { font-size: 14px; color: #2563eb; text-decoration: none; }
+        .ig:hover { text-decoration: underline; }
         .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 16px; margin-bottom: 16px; }
         .chips { display: flex; gap: 8px; flex-wrap: wrap; }
         .label { display: block; font-size: 13px; margin-bottom: 6px; }
         .input { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #d1d5db; }
         .btn { width: 100%; padding: 12px 14px; background: #111827; color: #fff; border: 0; border-radius: 12px; font-weight: 800; cursor: pointer; }
-        .btn--disabled { opacity: .6; cursor: not-allowed; }
+        .btn--disabled { opacity: .5; cursor: not-allowed; }
+        .btnLight { padding: 10px 12px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 10px; font-weight: 700; cursor: pointer; }
         .note { margin-top: 12px; font-size: 12px; color: #6b7280; }
-        .feedback { margin-top: 10px; font-size: 14px; }
+        .alert { margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-weight: 600; }
+        .alert.ok { background: #ecfdf5; color: #065f46; border: 1px solid #10b981; }
+        .alert.err { background: #fef2f2; color: #991b1b; border: 1px solid #ef4444; }
 
-        /* ✅ grid responsivo para evitar solapes */
         .formGrid { display: grid; grid-template-columns: 1fr; gap: 12px; }
         .fullRow { grid-column: 1 / -1; }
+        @media (min-width: 768px) { .formGrid { grid-template-columns: 1fr 1fr; } }
 
-        @media (min-width: 768px) {
-          .formGrid { grid-template-columns: 1fr 1fr; }
-        }
+        /* Modal */
+        .modalBack { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
+        .modalCard { width: 100%; max-width: 640px; background: #fff; border-radius: 16px; padding: 16px; border: 1px solid #e5e7eb; }
       `}</style>
     </div>
   );
 }
-
-// (tests dev opcionales si los quieres, idénticos a los tuyos)
