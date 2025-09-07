@@ -1,8 +1,7 @@
-// pages/index.tsx
 import React from "react";
 
+/** ===== Config ===== */
 type Role = "PT" | "DF" | "MC" | "DL";
-
 const POS: Role[] = ["PT", "DF", "MC", "DL"];
 const POS_COLORS: Record<Role, string> = {
   PT: "#f59e0b",
@@ -33,21 +32,23 @@ const PLAYERS: Player[] = [
   { id: 6, name: "Celia Huon", roles: ["DL", "MC"] },
   { id: 7, name: "Paula Escola", roles: ["DF"] },
   { id: 8, name: "Judith Antón", roles: ["DF"] },
-  { id: 9, name: "Noemi Antón", roles: ["DF"] },
+  { id: 9, name: "Yaiza García", roles: ["DL"] },
   { id: 10, name: "María Alonso", roles: ["PT"] },
   { id: 11, name: "Yaiza García", roles: ["DL"] },
   { id: 12, name: "Andrea Hernández", roles: ["DF", "MC", "DL"] },
   { id: 13, name: "Jasmine Sayagués", roles: ["DF"] },
   { id: 14, name: "Alba Muñiz", roles: ["MC"] },
 ];
-const byId = Object.fromEntries(PLAYERS.map(p => [p.id, p])) as Record<number, Player>;
+const byId = Object.fromEntries(PLAYERS.map((p) => [p.id, p])) as Record<number, Player>;
 const hasRole = (p: Player, r: Role) => (p.roles || []).includes(r);
 
+/** ===== Utils ===== */
 function formationToCounts(f: typeof FORMATIONS[number]) {
-  const [pt, df, mc, dl] = f.split("-").map(n => parseInt(n, 10));
+  const [pt, df, mc, dl] = f.split("-").map((n) => parseInt(n, 10));
   return { PT: pt || 0, DF: df || 0, MC: mc || 0, DL: dl || 0 };
 }
 
+/** ===== Hooks ===== */
 function useLineup(formation: typeof FORMATIONS[number]) {
   const counts = React.useMemo(() => formationToCounts(formation), [formation]);
   const makeEmpty = React.useMemo(
@@ -62,7 +63,7 @@ function useLineup(formation: typeof FORMATIONS[number]) {
   });
 
   React.useEffect(() => {
-    setLineup(prev => {
+    setLineup((prev) => {
       const resize = (arr: Array<number | null>, n: number) => {
         const kept = (arr || []).filter(Boolean).slice(0, n) as Array<number | null>;
         while (kept.length < n) kept.push(null);
@@ -80,21 +81,28 @@ function useLineup(formation: typeof FORMATIONS[number]) {
   return { lineup, setLineup, counts };
 }
 
-function Chip({ children, active, onClick }: { children: React.ReactNode; active?: boolean; onClick?: () => void }) {
+/** ===== UI Atoms ===== */
+function Chip({
+  children,
+  active,
+  onClick,
+}: {
+  children: React.ReactNode;
+  active?: boolean;
+  onClick?: () => void;
+}) {
   return (
     <button
       onClick={onClick}
-      title={String(children)}
       style={{
         padding: "10px 14px",
-        borderRadius: 14,
-        border: active ? "0" : "1px solid #e5e7eb",
+        borderRadius: 999,
+        border: active ? "2px solid #0f172a" : "1px solid #e5e7eb",
         background: active ? "#0f172a" : "#fff",
         color: active ? "#fff" : "#111827",
         fontWeight: 800,
         cursor: "pointer",
-        minWidth: 96,
-        boxShadow: active ? "inset 0 0 0 1px #0f172a, 0 2px 8px rgba(0,0,0,.15)" : "0 1px 4px rgba(0,0,0,.05)",
+        minWidth: 84,
       }}
     >
       {children}
@@ -102,23 +110,23 @@ function Chip({ children, active, onClick }: { children: React.ReactNode; active
   );
 }
 
-function RoleDot({ role, size = 28 }: { role: Role; size?: number }) {
+function RoleBadge({ role, size = 28, offset = -14 }: { role: Role; size?: number; offset?: number }) {
   return (
     <span
       style={{
         position: "absolute",
-        top: -size / 2 + 4,
-        left: -size / 2 + 4,
+        top: offset,
+        left: offset,
         width: size,
         height: size,
+        lineHeight: `${size}px`,
         borderRadius: 999,
+        textAlign: "center",
         background: POS_COLORS[role],
         color: "#fff",
-        fontSize: Math.max(11, Math.floor(size * 0.38)),
+        fontSize: size <= 24 ? 11 : 12,
         fontWeight: 900,
-        lineHeight: `${size}px`,
-        textAlign: "center",
-        boxShadow: "0 1px 3px rgba(0,0,0,.25)",
+        boxShadow: "0 1px 2px rgba(0,0,0,.25)",
       }}
     >
       {role}
@@ -126,86 +134,65 @@ function RoleDot({ role, size = 28 }: { role: Role; size?: number }) {
   );
 }
 
-function CaptainCrown() {
-  const size = 24;
-  return (
-    <span
-      aria-label="Capitana"
-      title="Capitana"
-      style={{
-        position: "absolute",
-        top: -size / 2 + 4,
-        right: -size / 2 + 4,
-        width: size,
-        height: size,
-        borderRadius: 999,
-        background: "#fff",
-        border: "2px solid #f59e0b",
-        color: "#b45309",
-        fontSize: 14,
-        fontWeight: 900,
-        lineHeight: `${size - 4}px`,
-        textAlign: "center",
-        boxShadow: "0 1px 3px rgba(0,0,0,.25)",
-      }}
-    >
-      👑
-    </span>
-  );
-}
-
+/** ===== Pitch / Card ===== */
 type Slot = {
   role: Role;
   player: Player | null;
-  rowSize: number;
-  isCaptain?: boolean;
   onClick?: () => void;
 };
 
-function CardSlot({ role, player, rowSize, isCaptain, onClick }: Slot) {
-  // Fuente adaptativa según cuántas cartas hay en la fila
-  const nameFont = rowSize >= 3 ? 15 : rowSize === 2 ? 16 : 18;
+function Card({
+  role,
+  player,
+  rowSize,
+  onClick,
+}: {
+  role: Role;
+  player: Player | null;
+  rowSize: number;
+  onClick?: () => void;
+}) {
+  // nombre un pelín más pequeño si hay 3 en la fila + nunca partir en varias líneas
+  const fontSize = rowSize >= 3 ? 14 : 16;
 
   return (
     <button
       onClick={onClick}
       style={{
         position: "relative",
-        width: "100%",
+        width: `${Math.max(20, Math.floor(100 / rowSize) - 2)}%`,
         maxWidth: 260,
+        minWidth: 120,
         minHeight: 96,
         borderRadius: 16,
-        background: player ? "#fff" : "rgba(255,255,255,.08)",
-        border: player ? `2px solid ${POS_COLORS[role]}` : "2px dashed rgba(255,255,255,.85)",
+        border: player ? `3px solid ${POS_COLORS[role]}` : "2px dashed rgba(255,255,255,.8)",
+        background: player ? "#fff" : "rgba(255,255,255,.10)",
         color: player ? "#111827" : "#fff",
-        padding: 14,
+        padding: 12,
         cursor: "pointer",
         boxShadow: player ? "0 2px 6px rgba(0,0,0,.08)" : "none",
-        overflow: "hidden",
       }}
     >
       {player ? (
         <>
-          <RoleDot role={role} />
-          {isCaptain && <CaptainCrown />}
+          <RoleBadge role={role} />
           <div
             style={{
-              // nombre centrado, 1 línea, sin romper palabras
+              fontSize,
+              fontWeight: 800,
+              textAlign: "center",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
-              textAlign: "center",
-              fontSize: nameFont,
-              fontWeight: 800,
-              padding: "6px 10px 4px",
               marginTop: 4,
             }}
+            title={player.name}
           >
             {player.name}
           </div>
         </>
       ) : (
-        <div style={{ textAlign: "center", fontWeight: 800, opacity: 0.9 }}>Añadir</div>
+        <div style={{ fontWeight: 800 }}>Añadir</div>
       )}
     </button>
   );
@@ -214,123 +201,177 @@ function CardSlot({ role, player, rowSize, isCaptain, onClick }: Slot) {
 function Pitch({
   rows,
 }: {
-  rows: Array<{ role: Role; players: Array<{ player: Player | null; isCaptain: boolean }> }>;
+  rows: Array<{ role: Role; players: Slot[] }>;
 }) {
   return (
     <div
       style={{
         width: "100%",
-        borderRadius: 28,
-        padding: 18,
-        background: "linear-gradient(145deg, #176a3a, #0e5a3a)",
+        borderRadius: 24,
+        padding: 16,
+        background: "linear-gradient(#15803d,#065f46)",
         position: "relative",
         overflow: "hidden",
-        boxShadow: "inset 0 3px 10px rgba(0,0,0,.35)",
+        boxShadow: "inset 0 2px 8px rgba(0,0,0,.35)",
       }}
     >
-      <div style={{ position: "absolute", inset: 10, border: "2px solid rgba(255,255,255,.38)", borderRadius: 22 }} />
+      <div style={{ position: "absolute", inset: 8, border: "2px solid rgba(255,255,255,.35)", borderRadius: 20 }} />
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
-        {rows.map((row, idx) => {
-          const rowSize = row.players.length || 1;
-          const colWidth = Math.max(22, Math.floor(100 / rowSize) - 2);
-          return (
-            <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
-              {row.players.map((slot, i) => (
-                <div key={i} style={{ width: `${colWidth}%`, display: "flex", justifyContent: "center" }}>
-                  <CardSlot
-                    role={row.role}
-                    player={slot.player}
-                    rowSize={rowSize}
-                    isCaptain={slot.isCaptain}
-                    onClick={() => {
-                      /* abre modal de selección de jugadora en el contenedor principal */
-                      const ev = new CustomEvent("open-slot", { detail: { role: row.role, index: i } });
-                      window.dispatchEvent(ev);
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          );
-        })}
+        {rows.map((row, idx) => (
+          <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+            {row.players.map((slot, i) => (
+              <Card key={i} role={row.role} player={slot.player} rowSize={row.players.length} onClick={slot.onClick} />
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
+/** ===== Captain Picker (chips sin "C") ===== */
+function MiniBadge({ role }: { role: Role }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 26,
+        height: 26,
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 900,
+        background: POS_COLORS[role],
+        color: "#fff",
+      }}
+    >
+      {role}
+    </span>
+  );
+}
+
+function CaptainPicker({
+  candidateIds,
+  captainId,
+  onSelect,
+}: {
+  candidateIds: number[];
+  captainId: number | null;
+  onSelect: (id: number) => void;
+}) {
+  if (candidateIds.length === 0) return null;
+
+  return (
+    <section
+      style={{
+        background: "#fff",
+        border: "1px solid #e5e7eb",
+        borderRadius: 16,
+        padding: 16,
+        marginTop: 16,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", gap: 12, justifyContent: "space-between" }}>
+        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>Selecciona capitana</h3>
+        <div style={{ fontSize: 13, color: "#065f46", fontWeight: 800 }}>
+          Capitana: {captainId ? byId[captainId]?.name : "—"}
+        </div>
+      </div>
+      <div style={{ marginTop: 6, fontSize: 12, color: "#6b7280" }}>
+        (los puntos de la capitana se multiplican x2)
+      </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 12 }}>
+        {candidateIds.map((id) => {
+          const p = byId[id];
+          const isActive = id === captainId;
+          // rol preferente para la chapita del chip (primer rol disponible)
+          const role = (p.roles && p.roles[0]) || "DL";
+          return (
+            <button
+              key={id}
+              onClick={() => onSelect(id)}
+              title={p.name}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "8px 12px",
+                borderRadius: 999,
+                border: isActive ? "2px solid #f59e0b" : "1px solid #e5e7eb",
+                background: "#fff",
+                cursor: "pointer",
+                boxShadow: isActive ? "0 0 0 3px rgba(245,158,11,.20)" : "none",
+              }}
+            >
+              <MiniBadge role={role} />
+              <span style={{ fontWeight: 800 }}>{p.name}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/** ===== Main ===== */
 export default function App() {
   const [formation, setFormation] = React.useState<typeof FORMATIONS[number]>("1-1-1-2");
   const { lineup, setLineup, counts } = useLineup(formation);
   const [captainId, setCaptainId] = React.useState<number | null>(null);
   const [modal, setModal] = React.useState<{ role: Role; index: number } | null>(null);
 
-  React.useEffect(() => {
-    const handler = (e: any) => setModal(e.detail);
-    window.addEventListener("open-slot", handler as any);
-    return () => window.removeEventListener("open-slot", handler as any);
-  }, []);
+  const selected = new Set(Object.values(lineup).flat().filter(Boolean) as number[]);
 
-  // listado de opciones por rol
   const roleOptions = React.useMemo(
     () => ({
-      PT: PLAYERS.filter(p => hasRole(p, "PT")),
-      DF: PLAYERS.filter(p => hasRole(p, "DF")),
-      MC: PLAYERS.filter(p => hasRole(p, "MC")),
-      DL: PLAYERS.filter(p => hasRole(p, "DL")),
+      PT: PLAYERS.filter((p) => hasRole(p, "PT")),
+      DF: PLAYERS.filter((p) => hasRole(p, "DF")),
+      MC: PLAYERS.filter((p) => hasRole(p, "MC")),
+      DL: PLAYERS.filter((p) => hasRole(p, "DL")),
     }),
     []
   );
-  const selectedIds = new Set<number>(Object.values(lineup).flat().filter(Boolean) as number[]);
 
   function openSlot(role: Role, index: number) {
     setModal({ role, index });
   }
+
   function choosePlayer(id: number) {
-    setLineup(prev => {
-      const next: Record<Role, Array<number | null>> = { ...prev, [modal!.role]: [...prev[modal!.role]] } as any;
-      // Evitar duplicados
-      POS.forEach(r => {
-        next[r] = next[r].map(x => (x === id ? null : x));
-      });
+    setLineup((prev) => {
+      const next: Record<Role, Array<number | null>> = { ...prev } as any;
+      POS.forEach((r) => (next[r] = [...prev[r]].map((x) => (x === id ? null : x))));
+      next[modal!.role] = [...prev[modal!.role]];
       next[modal!.role][modal!.index] = id;
       return next;
     });
-    // si la jugadora cambiada era capitana, limpia capitana
-    setCaptainId(c => (c && !Object.values(lineup).flat().includes(c) ? null : c));
     setModal(null);
   }
+
   function clearSlot() {
-    if (!modal) return;
-    setLineup(prev => {
-      const arr = [...prev[modal.role]];
-      if (arr[modal.index] === captainId) setCaptainId(null);
-      arr[modal.index] = null;
-      return { ...prev, [modal.role]: arr };
+    setLineup((prev) => {
+      const arr = [...prev[modal!.role]];
+      arr[modal!.index] = null;
+      return { ...prev, [modal!.role]: arr };
     });
     setModal(null);
   }
 
-  // filas del campo (de arriba a abajo)
+  // Construcción de filas (de arriba a abajo: DL, MC, DF, PT)
   const rows = React.useMemo(() => {
-    const order: Role[] = ["DL", "MC", "DF", "PT"].filter(r => (counts as any)[r] > 0) as Role[];
-    return order.map(role => ({
+    const displayOrder: Role[] = ["DL", "MC", "DF", "PT"].filter((r) => (counts as any)[r] > 0) as Role[];
+    return displayOrder.map((role) => ({
       role,
-      players: lineup[role].map(id => ({ player: id ? byId[id] : null, isCaptain: id === captainId })),
+      players: lineup[role].map((id, i) => ({
+        role,
+        player: id ? byId[id] : null,
+        onClick: () => openSlot(role, i),
+      })),
     }));
-  }, [counts, lineup, captainId]);
+  }, [counts, lineup]);
 
-  // Selector de capitana: chips con las 5 jugadoras elegidas (sin “C”)
-  const chosenPlayers: Array<{ id: number; role: Role; name: string }> = React.useMemo(() => {
-    const list: Array<{ id: number; role: Role; name: string }> = [];
-    (["PT", "DF", "MC", "DL"] as Role[]).forEach(r => {
-      lineup[r].forEach(id => {
-        if (id) list.push({ id, role: r, name: byId[id].name });
-      });
-    });
-    return list;
-  }, [lineup]);
-
-  // Envío (igual que tenías)
+  // datos envío
   const [participantName, setParticipantName] = React.useState("");
   const [participantEmail, setParticipantEmail] = React.useState("");
   const [botField, setBotField] = React.useState("");
@@ -360,39 +401,38 @@ export default function App() {
       if (!res.ok) throw new Error(await res.text());
       alert("✅ Equipo enviado. ¡Suerte!");
     } catch (e: any) {
-      alert("❌ No se pudo enviar: " + (e?.message || "Error"));
+      alert("❌ No se pudo enviar: " + e.message);
     } finally {
       setSending(false);
     }
   }
 
-  // UI
+  // ids candidatas para capitana (lo que ya está colocado)
+  const candidateIds = React.useMemo(
+    () => Object.values(lineup).flat().filter(Boolean) as number[],
+    [lineup]
+  );
+
   return (
-    <div style={{ minHeight: "100vh", background: "#eef2f7", color: "#111827" }}>
+    <div style={{ minHeight: "100vh", background: "#f3f4f6", color: "#111827" }}>
       <div style={{ maxWidth: 1040, margin: "0 auto", padding: 16 }}>
-        {/* Header */}
-        <section
+        {/* Título + instrucciones (solo la 1ª línea, como pediste) */}
+        <header
           style={{
             background: "#0f172a",
             color: "#fff",
             borderRadius: 16,
-            padding: "18px 16px",
+            padding: "14px 16px",
             marginBottom: 14,
-            boxShadow: "0 6px 18px rgba(0,0,0,.12)",
           }}
         >
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, display: "flex", gap: 10, alignItems: "center" }}>
-            <span style={{ fontSize: 24 }}>⚽</span> Fantasy – Amigos del Duero
-          </h1>
-          <ul style={{ margin: "10px 0 0", paddingLeft: 20, lineHeight: 1.4 }}>
-            <li>Selecciona tu formación y escoge hasta 5 jugadoras.</li>
-            <li>
-              Selecciona una <strong>capitana</strong> (los puntos que haga se multiplicarán <strong>x2</strong>).
-            </li>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>⚽ Fantasy – Amigos del Duero</h1>
+          <ul style={{ margin: "8px 0 0 16px", padding: 0, lineHeight: 1.3 }}>
+            <li style={{ fontSize: 14 }}>Selecciona tu formación y escoge hasta 5 jugadoras.</li>
           </ul>
-        </section>
+        </header>
 
-        {/* Formaciones */}
+        {/* Selector de formación (3x3) */}
         <section
           style={{
             background: "#fff",
@@ -409,7 +449,7 @@ export default function App() {
               gap: 12,
             }}
           >
-            {FORMATIONS.map(f => (
+            {FORMATIONS.map((f) => (
               <Chip key={f} active={formation === f} onClick={() => setFormation(f)}>
                 {f}
               </Chip>
@@ -422,117 +462,36 @@ export default function App() {
           <Pitch rows={rows} />
         </section>
 
-        {/* Selector de CAPITANA (solo aparece cuando hay jugadoras elegidas) */}
-        {chosenPlayers.length > 0 && (
-          <section
-            style={{
-              background: "#fff",
-              border: "1px solid #e5e7eb",
-              borderRadius: 16,
-              padding: 16,
-              marginBottom: 16,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "baseline",
-                justifyContent: "space-between",
-                gap: 12,
-                flexWrap: "wrap",
-                marginBottom: 10,
-              }}
-            >
-              <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Selecciona capitana</h3>
-              <div style={{ fontSize: 14, color: "#065f46" }}>
-                Capitana:{" "}
-                <strong>
-                  {captainId ? byId[captainId].name : <span style={{ opacity: 0.6 }}>— sin asignar —</span>}
-                </strong>
-              </div>
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-              {chosenPlayers.map(p => {
-                const active = p.id === captainId;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => setCaptainId(active ? null : p.id)}
-                    title={`Hacer capitana a ${p.name}`}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "10px 12px",
-                      borderRadius: 999,
-                      border: active ? "2px solid #f59e0b" : "1px solid #e5e7eb",
-                      background: active ? "#fff7ed" : "#fff",
-                      cursor: "pointer",
-                      boxShadow: active ? "0 2px 8px rgba(245, 158, 11, .35)" : "0 1px 4px rgba(0,0,0,.05)",
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 999,
-                        background: POS_COLORS[p.role],
-                        color: "#fff",
-                        fontWeight: 900,
-                        fontSize: 12,
-                        lineHeight: "28px",
-                        textAlign: "center",
-                      }}
-                    >
-                      {p.role}
-                    </span>
-                    <span
-                      style={{
-                        maxWidth: 160,
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        fontWeight: 800,
-                      }}
-                    >
-                      {p.name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        )}
+        {/* Selector de capitana (sin “C” en mini-chips y sin marcar nada arriba) */}
+        <CaptainPicker
+          candidateIds={candidateIds}
+          captainId={captainId}
+          onSelect={(id) => setCaptainId((c) => (c === id ? null : id))}
+        />
 
-        {/* Datos y envío */}
+        {/* Datos y envío (inline, NO modal) */}
         <section
           style={{
             background: "#fff",
             border: "1px solid #e5e7eb",
             borderRadius: 16,
             padding: 16,
+            marginTop: 16,
             marginBottom: 16,
           }}
         >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
               <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
               <input
                 value={participantName}
-                onChange={e => setParticipantName(e.target.value)}
+                onChange={(e) => setParticipantName(e.target.value)}
                 placeholder="Ej. Laura Pérez"
                 style={{
                   width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 12,
+                  padding: 10,
+                  borderRadius: 10,
                   border: "1px solid #d1d5db",
-                  fontSize: 14,
                 }}
               />
             </div>
@@ -541,21 +500,22 @@ export default function App() {
               <input
                 type="email"
                 value={participantEmail}
-                onChange={e => setParticipantEmail(e.target.value)}
+                onChange={(e) => setParticipantEmail(e.target.value)}
                 placeholder="tu@email.com"
                 style={{
                   width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 12,
+                  padding: 10,
+                  borderRadius: 10,
                   border: "1px solid #d1d5db",
-                  fontSize: 14,
                 }}
               />
             </div>
+            {/* Honeypot */}
             <div style={{ display: "none" }} aria-hidden>
               <label>Deja esto vacío</label>
-              <input value={botField} onChange={e => setBotField(e.target.value)} />
+              <input value={botField} onChange={(e) => setBotField(e.target.value)} />
             </div>
+
             <div style={{ gridColumn: "1 / -1" }}>
               <button
                 onClick={send}
@@ -567,16 +527,17 @@ export default function App() {
                   color: "#fff",
                   border: 0,
                   borderRadius: 12,
-                  fontWeight: 900,
+                  fontWeight: 800,
                   cursor: sending ? "not-allowed" : "pointer",
                 }}
               >
                 {sending ? "Enviando..." : "Enviar selección"}
               </button>
-              <div style={{ marginTop: 10, fontSize: 12, color: "#6b7280", textAlign: "center" }}>
-                Se enviará una copia del equipo que elijas al email indicado.
-              </div>
             </div>
+          </div>
+
+          <div style={{ marginTop: 10, fontSize: 12, color: "#6b7280" }}>
+            Se enviará una copia del equipo que elijas al email indicado.
           </div>
         </section>
 
@@ -591,26 +552,34 @@ export default function App() {
               alignItems: "center",
               justifyContent: "center",
               zIndex: 50,
+              padding: 12,
             }}
             onClick={() => setModal(null)}
           >
             <div
               style={{ width: "100%", maxWidth: 520, background: "#fff", borderRadius: 16, padding: 16 }}
-              onClick={e => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <strong>Selecciona {modal.role}</strong>
                 <button
                   onClick={() => setModal(null)}
-                  style={{ border: 0, background: "#f3f4f6", padding: "6px 10px", borderRadius: 8, cursor: "pointer" }}
+                  style={{
+                    border: 0,
+                    background: "#f3f4f6",
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                  }}
                 >
                   Cerrar
                 </button>
               </div>
+
               <div style={{ display: "grid", gap: 8, maxHeight: "60vh", overflow: "auto" }}>
                 {roleOptions[modal.role]
-                  .filter(p => !selectedIds.has(p.id) || lineup[modal.role][modal.index] === p.id)
-                  .map(p => (
+                  .filter((p) => !selected.has(p.id) || lineup[modal.role][modal.index] === p.id)
+                  .map((p) => (
                     <div
                       key={p.id}
                       style={{
@@ -622,34 +591,24 @@ export default function App() {
                         padding: 10,
                       }}
                     >
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
                         <span
                           style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                             width: 28,
                             height: 28,
                             borderRadius: 999,
                             background: POS_COLORS[modal.role],
                             color: "#fff",
-                            fontWeight: 900,
                             fontSize: 12,
-                            lineHeight: "28px",
-                            textAlign: "center",
-                            flex: "0 0 auto",
+                            fontWeight: 900,
                           }}
                         >
                           {modal.role}
                         </span>
-                        <div
-                          style={{
-                            fontSize: 14,
-                            fontWeight: 800,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
-                          {p.name}
-                        </div>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{p.name}</div>
                       </div>
                       <button
                         onClick={() => choosePlayer(p.id)}
@@ -659,7 +618,7 @@ export default function App() {
                           color: "#065f46",
                           padding: "6px 10px",
                           borderRadius: 10,
-                          fontWeight: 800,
+                          fontWeight: 700,
                           cursor: "pointer",
                         }}
                       >
@@ -668,6 +627,7 @@ export default function App() {
                     </div>
                   ))}
               </div>
+
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
                 <button
                   onClick={clearSlot}
