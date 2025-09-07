@@ -33,25 +33,15 @@ function roleBadge(role: Role) {
   `;
 }
 
-function captainBadge() {
-  return `
-    <span style="
-      position:absolute;top:-10px;right:-10px;
-      display:inline-block;width:22px;height:22px;line-height:22px;
-      border-radius:9999px;text-align:center;font-weight:900;font-size:12px;
-      background:#fde68a;border:2px solid #f59e0b;color:#92400e;">C</span>
-  `;
-}
-
+// SIN icono "C": solo resaltamos con fondo dorado si es capitana
 function card(role: Role, name: string, isCaptain: boolean) {
   return `
     <div style="
       display:inline-block;min-width:150px;max-width:210px;
-      background:${isCaptain ? "#fde68a" : "#ffffff"}; /* fondo dorado si es capitana */
+      background:${isCaptain ? "#fde68a" : "#ffffff"};
       border-radius:12px;border:2px solid ${roleColor(role)};
       box-shadow:0 2px 6px rgba(0,0,0,.08);padding:10px 12px;margin:6px;
       text-align:left;position:relative;vertical-align:top;">
-      ${isCaptain ? captainBadge() : ""}
       <div style="display:inline-flex;align-items:center;">
         ${roleBadge(role)}
         <span style="display:inline-block;margin-left:12px;
@@ -120,7 +110,7 @@ function buildParticipantHtml(b: Body) {
           </tbody>
         </table>
 
-        <!-- Mensajes planos (no citados), mismo estilo que arriba -->
+        <!-- Mensajes planos (no citados) -->
         <p style="margin:16px 0 6px;">
           📢 <strong>Resultados y clasificación:</strong>
           se publicarán en Instagram <span style="white-space:nowrap">@fansamigosdelduero</span>.
