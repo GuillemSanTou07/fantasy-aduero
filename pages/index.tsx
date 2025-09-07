@@ -32,7 +32,7 @@ const PLAYERS: Player[] = [
   { id: 6, name: "Celia Huon", roles: ["DL", "MC"] },
   { id: 7, name: "Paula Escola", roles: ["DF"] },
   { id: 8, name: "Judith Antón", roles: ["DF"] },
-  { id: 9, name: "Yaiza García", roles: ["DL"] },
+  { id: 9, name: "Noemi Antón", roles: ["DF"] },
   { id: 10, name: "María Alonso", roles: ["PT"] },
   { id: 11, name: "Yaiza García", roles: ["DL"] },
   { id: 12, name: "Andrea Hernández", roles: ["DF", "MC", "DL"] },
@@ -152,7 +152,6 @@ function Card({
   rowSize: number;
   onClick?: () => void;
 }) {
-  // nombre un pelín más pequeño si hay 3 en la fila + nunca partir en varias líneas
   const fontSize = rowSize >= 3 ? 14 : 16;
 
   return (
@@ -198,11 +197,7 @@ function Card({
   );
 }
 
-function Pitch({
-  rows,
-}: {
-  rows: Array<{ role: Role; players: Slot[] }>;
-}) {
+function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
   return (
     <div
       style={{
@@ -229,7 +224,7 @@ function Pitch({
   );
 }
 
-/** ===== Captain Picker (chips sin "C") ===== */
+/** ===== Captain Picker (chips sin “C”) ===== */
 function MiniBadge({ role }: { role: Role }) {
   return (
     <span
@@ -272,12 +267,7 @@ function CaptainPicker({
         marginTop: 16,
       }}
     >
-      <div style={{ display: "flex", alignItems: "baseline", gap: 12, justifyContent: "space-between" }}>
-        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>Selecciona capitana</h3>
-        <div style={{ fontSize: 13, color: "#065f46", fontWeight: 800 }}>
-          Capitana: {captainId ? byId[captainId]?.name : "—"}
-        </div>
-      </div>
+      <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>Selecciona capitana</h3>
       <div style={{ marginTop: 6, fontSize: 12, color: "#6b7280" }}>
         (los puntos de la capitana se multiplican x2)
       </div>
@@ -286,7 +276,6 @@ function CaptainPicker({
         {candidateIds.map((id) => {
           const p = byId[id];
           const isActive = id === captainId;
-          // rol preferente para la chapita del chip (primer rol disponible)
           const role = (p.roles && p.roles[0]) || "DL";
           return (
             <button
@@ -321,6 +310,9 @@ export default function App() {
   const { lineup, setLineup, counts } = useLineup(formation);
   const [captainId, setCaptainId] = React.useState<number | null>(null);
   const [modal, setModal] = React.useState<{ role: Role; index: number } | null>(null);
+
+  // form modal (nombre/email)
+  const [formOpen, setFormOpen] = React.useState(false);
 
   const selected = new Set(Object.values(lineup).flat().filter(Boolean) as number[]);
 
@@ -358,7 +350,7 @@ export default function App() {
     setModal(null);
   }
 
-  // Construcción de filas (de arriba a abajo: DL, MC, DF, PT)
+  // Construcción de filas (arriba->abajo: DL, MC, DF, PT)
   const rows = React.useMemo(() => {
     const displayOrder: Role[] = ["DL", "MC", "DF", "PT"].filter((r) => (counts as any)[r] > 0) as Role[];
     return displayOrder.map((role) => ({
@@ -377,13 +369,16 @@ export default function App() {
   const [botField, setBotField] = React.useState("");
   const [sending, setSending] = React.useState(false);
 
-  async function send() {
+  function tryOpenForm() {
     const needed = (counts.PT + counts.DF + counts.MC + counts.DL) as number;
     const chosen = Object.values(lineup).flat().filter(Boolean).length;
     if (chosen !== needed) return alert("Completa todos los huecos.");
     if (!captainId) return alert("Selecciona capitana.");
-    if (!participantName || !participantEmail) return alert("Rellena nombre y tu email.");
+    setFormOpen(true);
+  }
 
+  async function send() {
+    if (!participantName || !participantEmail) return alert("Rellena nombre y tu email.");
     setSending(true);
     try {
       const res = await fetch("/api/submit", {
@@ -399,6 +394,7 @@ export default function App() {
         }),
       });
       if (!res.ok) throw new Error(await res.text());
+      setFormOpen(false);
       alert("✅ Equipo enviado. ¡Suerte!");
     } catch (e: any) {
       alert("❌ No se pudo enviar: " + e.message);
@@ -407,7 +403,7 @@ export default function App() {
     }
   }
 
-  // ids candidatas para capitana (lo que ya está colocado)
+  // ids candidatas para capitana
   const candidateIds = React.useMemo(
     () => Object.values(lineup).flat().filter(Boolean) as number[],
     [lineup]
@@ -416,7 +412,7 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: "#f3f4f6", color: "#111827" }}>
       <div style={{ maxWidth: 1040, margin: "0 auto", padding: 16 }}>
-        {/* Título + instrucciones (solo la 1ª línea, como pediste) */}
+        {/* Título limpio */}
         <header
           style={{
             background: "#0f172a",
@@ -427,19 +423,16 @@ export default function App() {
           }}
         >
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>⚽ Fantasy – Amigos del Duero</h1>
-          <ul style={{ margin: "8px 0 0 16px", padding: 0, lineHeight: 1.3 }}>
-            <li style={{ fontSize: 14 }}>Selecciona tu formación y escoge hasta 5 jugadoras.</li>
-          </ul>
         </header>
 
-        {/* Selector de formación (3x3) */}
+        {/* Selector de formación 3x3 */}
         <section
           style={{
             background: "#fff",
             border: "1px solid #e5e7eb",
             borderRadius: 16,
             padding: 16,
-            marginBottom: 16,
+            marginBottom: 10,
           }}
         >
           <div
@@ -457,88 +450,40 @@ export default function App() {
           </div>
         </section>
 
+        {/* Subtítulo centrado entre selector y campo */}
+        <div style={{ textAlign: "center", fontSize: 13, color: "#6b7280", margin: "2px 0 12px" }}>
+          Selecciona tu formación y escoge hasta 5 jugadoras.
+        </div>
+
         {/* Campo */}
         <section style={{ marginBottom: 16 }}>
           <Pitch rows={rows} />
         </section>
 
-        {/* Selector de capitana (sin “C” en mini-chips y sin marcar nada arriba) */}
+        {/* Selector de capitana (sin texto Capitana: …) */}
         <CaptainPicker
           candidateIds={candidateIds}
           captainId={captainId}
           onSelect={(id) => setCaptainId((c) => (c === id ? null : id))}
         />
 
-        {/* Datos y envío (inline, NO modal) */}
-        <section
-          style={{
-            background: "#fff",
-            border: "1px solid #e5e7eb",
-            borderRadius: 16,
-            padding: 16,
-            marginTop: 16,
-            marginBottom: 16,
-          }}
-        >
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
-              <input
-                value={participantName}
-                onChange={(e) => setParticipantName(e.target.value)}
-                placeholder="Ej. Laura Pérez"
-                style={{
-                  width: "100%",
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid #d1d5db",
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu email</label>
-              <input
-                type="email"
-                value={participantEmail}
-                onChange={(e) => setParticipantEmail(e.target.value)}
-                placeholder="tu@email.com"
-                style={{
-                  width: "100%",
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid #d1d5db",
-                }}
-              />
-            </div>
-            {/* Honeypot */}
-            <div style={{ display: "none" }} aria-hidden>
-              <label>Deja esto vacío</label>
-              <input value={botField} onChange={(e) => setBotField(e.target.value)} />
-            </div>
-
-            <div style={{ gridColumn: "1 / -1" }}>
-              <button
-                onClick={send}
-                disabled={sending}
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  background: sending ? "#6b7280" : "#111827",
-                  color: "#fff",
-                  border: 0,
-                  borderRadius: 12,
-                  fontWeight: 800,
-                  cursor: sending ? "not-allowed" : "pointer",
-                }}
-              >
-                {sending ? "Enviando..." : "Enviar selección"}
-              </button>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 10, fontSize: 12, color: "#6b7280" }}>
-            Se enviará una copia del equipo que elijas al email indicado.
-          </div>
+        {/* Botón para abrir modal de nombre/email */}
+        <section style={{ marginTop: 16, marginBottom: 16 }}>
+          <button
+            onClick={tryOpenForm}
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              background: "#111827",
+              color: "#fff",
+              border: 0,
+              borderRadius: 12,
+              fontWeight: 800,
+              cursor: "pointer",
+            }}
+          >
+            Enviar selección
+          </button>
         </section>
 
         {/* Modal selección de jugadora */}
@@ -636,6 +581,101 @@ export default function App() {
                   Vaciar posición
                 </button>
                 <div style={{ fontSize: 12, color: "#6b7280" }}>Solo puedes alinear jugadoras del equipo.</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de envío (nombre/email) */}
+        {formOpen && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 60,
+              padding: 12,
+            }}
+            onClick={() => setFormOpen(false)}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: 560,
+                background: "#fff",
+                borderRadius: 16,
+                padding: 16,
+                border: "1px solid #e5e7eb",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <h3 style={{ margin: 0, fontWeight: 900 }}>Datos para el envío</h3>
+                <button
+                  onClick={() => setFormOpen(false)}
+                  style={{
+                    border: 0,
+                    background: "#f3f4f6",
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cerrar
+                </button>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
+                  <input
+                    value={participantName}
+                    onChange={(e) => setParticipantName(e.target.value)}
+                    placeholder="Ej. Laura Pérez"
+                    style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #d1d5db" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu email</label>
+                  <input
+                    type="email"
+                    value={participantEmail}
+                    onChange={(e) => setParticipantEmail(e.target.value)}
+                    placeholder="tu@email.com"
+                    style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #d1d5db" }}
+                  />
+                </div>
+
+                {/* Honeypot */}
+                <div style={{ display: "none" }} aria-hidden>
+                  <label>Deja esto vacío</label>
+                  <input value={botField} onChange={(e) => setBotField(e.target.value)} />
+                </div>
+
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <button
+                    onClick={send}
+                    disabled={sending}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      background: sending ? "#6b7280" : "#111827",
+                      color: "#fff",
+                      border: 0,
+                      borderRadius: 12,
+                      fontWeight: 800,
+                      cursor: sending ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {sending ? "Enviando..." : "Confirmar y enviar"}
+                  </button>
+                  <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280", textAlign: "center" }}>
+                    Se enviará una copia del equipo que elijas al email indicado.
+                  </div>
+                </div>
               </div>
             </div>
           </div>
