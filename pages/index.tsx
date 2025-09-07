@@ -171,7 +171,11 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                   const border = slot.player
                     ? `2px solid ${POS_COLORS[slot.role]}`
                     : "2px dashed rgba(255,255,255,.7)";
-                  const bg = slot.isCaptain ? "#fde68a" : slot.player ? "#fff" : "rgba(255,255,255,.08)";
+                  const bg = slot.isCaptain
+                    ? "#fde68a" // SOLO dorado si es capitana
+                    : slot.player
+                    ? "#fff"
+                    : "rgba(255,255,255,.10)"; // hueco normal (no dorado)
                   return (
                     <button
                       key={i}
@@ -269,14 +273,7 @@ function CaptainPicker({
         {captainId ? <span style={{ fontSize: 12, color: "#065f46" }}>Capitana: {byId[captainId].name}</span> : null}
       </div>
 
-      <div
-        role="radiogroup"
-        style={{
-          display: "flex",
-          gap: 8,
-          flexWrap: "wrap",
-        }}
-      >
+      <div role="radiogroup" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {selectedIds.map((id) => {
           const role = getRoleOf(id) || "DL";
           const active = id === captainId;
@@ -335,6 +332,7 @@ export default function App() {
   function choosePlayer(id: number) {
     setLineup((prev) => {
       const next: Record<Role, Array<number | null>> = { ...prev, [modal!.role]: [...prev[modal!.role]] } as any;
+      // Evitar duplicados
       POS.forEach((r) => {
         next[r] = next[r].map((x) => (x === id ? null : x));
       });
@@ -345,16 +343,16 @@ export default function App() {
   }
   function clearSlot() {
     setLineup((prev) => {
+      const idToClear = prev[modal!.role][modal!.index];
       const arr = [...prev[modal!.role]];
       arr[modal!.index] = null;
+      // si quitamos a la capitana, reseteamos
+      if (idToClear && idToClear === captainId) setCaptainId(null);
       return { ...prev, [modal!.role]: arr };
     });
-    // si quitamos la capitana, reseteamos
-    setCaptainId((c) => (c && !selected.has(c) ? null : c));
     setModal(null);
   }
 
-  // Rol actual de un id (según dónde esté colocado)
   const getRoleOf = React.useCallback(
     (id: number): Role | null => {
       for (const r of POS) if ((lineup[r] || []).includes(id)) return r;
@@ -363,7 +361,7 @@ export default function App() {
     [lineup]
   );
 
-  // Filas del campo (de arriba a abajo: DL, MC, DF, PT)
+  // Filas del campo
   const rows = React.useMemo(() => {
     const displayOrder: Role[] = ["DL", "MC", "DF", "PT"].filter((r) => (counts as any)[r] > 0) as Role[];
     return displayOrder.map((role) => ({
@@ -473,20 +471,30 @@ export default function App() {
           setCaptainId={setCaptainId}
         />
 
-        {/* Datos y envío */}
+        {/* Datos y envío (centrado) */}
         <section
-          style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}
+          style={{
+            background: "#fff",
+            border: "1px solid #e5e7eb",
+            borderRadius: 16,
+            padding: 16,
+            marginBottom: 16,
+            display: "flex",
+            justifyContent: "center",
+          }}
         >
           <div
             style={{
+              width: "100%",
+              maxWidth: 820,
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
               gap: 12,
-              alignItems: "end",
               justifyItems: "center",
+              alignItems: "end",
             }}
           >
-            <div style={{ width: "min(100%, 480px)" }}>
+            <div style={{ width: "min(100%, 380px)" }}>
               <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
               <input
                 value={participantName}
@@ -501,7 +509,7 @@ export default function App() {
                 }}
               />
             </div>
-            <div style={{ width: "min(100%, 480px)" }}>
+            <div style={{ width: "min(100%, 380px)" }}>
               <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu email</label>
               <input
                 type="email"
@@ -542,10 +550,10 @@ export default function App() {
                 {sending ? "Enviando..." : "Enviar selección"}
               </button>
             </div>
-          </div>
 
-          <div style={{ marginTop: 12, fontSize: 12, color: "#6b7280", textAlign: "center" }}>
-            <em>Se enviará una copia del equipo que elijas al email indicado.</em>
+            <div style={{ gridColumn: "1 / -1", marginTop: 8, fontSize: 12, color: "#6b7280", textAlign: "center" }}>
+              <em>Se enviará una copia del equipo que elijas al email indicado.</em>
+            </div>
           </div>
         </section>
 
@@ -567,9 +575,7 @@ export default function App() {
               style={{ width: "100%", maxWidth: 520, background: "#fff", borderRadius: 16, padding: 16 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div
-                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}
-              >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <strong>Selecciona {modal.role}</strong>
                 <button
                   onClick={() => setModal(null)}
@@ -579,7 +585,7 @@ export default function App() {
                 </button>
               </div>
               <div style={{ display: "grid", gap: 8, maxHeight: "60vh", overflow: "auto" }}>
-                {roleOptions[modal.role]
+                {PLAYERS.filter((p) => hasRole(p, modal.role))
                   .filter((p) => !selected.has(p.id) || lineup[modal.role][modal.index] === p.id)
                   .map((p) => (
                     <div
