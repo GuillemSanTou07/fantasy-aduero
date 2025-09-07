@@ -19,12 +19,11 @@ const PLAYERS = new Map<number, string>([
   [13, "Jasmine Sayagués"], [14, "Alba Muñiz"],
 ]);
 
-// ===== Helpers de render =====
+// ===== Render helpers (alineación sobre "campo") =====
 const roleOrder: Role[] = ["DL", "MC", "DF", "PT"]; // arriba -> abajo
 const roleColor = (r: Role) =>
   r === "PT" ? "#f59e0b" : r === "DF" ? "#3b82f6" : r === "MC" ? "#10b981" : "#ef4444";
 
-/** Badge de posición, centrado exacto (24x24, line-height:24px) */
 function roleBadge(role: Role) {
   return `
     <span style="
@@ -34,7 +33,6 @@ function roleBadge(role: Role) {
   `;
 }
 
-/** Badge de capitana flotante (sobresale arriba-derecha) */
 function captainBadge() {
   return `
     <span style="
@@ -45,7 +43,6 @@ function captainBadge() {
   `;
 }
 
-/** Tarjeta: MISMO tamaño siempre; badge + nombre alineados en la MISMA línea */
 function card(role: Role, name: string, isCaptain: boolean) {
   return `
     <div style="
@@ -90,7 +87,6 @@ function lineupRowsHTML(b: Body) {
 
 // ===== Emails =====
 
-// Participante (HTML bonito)  << CAMBIADO: se eliminan contenedores “caja” para evitar quote
 function buildParticipantHtml(b: Body) {
   const rows = lineupRowsHTML(b);
   return `<!doctype html>
@@ -104,7 +100,8 @@ function buildParticipantHtml(b: Body) {
 
       <div style="padding:20px;">
         <p style="margin:0 0 12px;">¡Hola <strong>${b.participantName}</strong>! 🎉</p>
-        <p style="margin:0 0 12px;">Tu equipo se ha registrado correctamente. Formación <strong>${b.formation}</strong>:</p>
+        <p style="margin:0 0 12px;">Tu equipo se ha registrado correctamente.</p>
+        <p style="margin:0 0 12px;">Formación: <strong>${b.formation}</strong></p>
 
         <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background:linear-gradient(#15803d,#065f46);border-radius:16px;">
           <tbody>
@@ -120,17 +117,11 @@ function buildParticipantHtml(b: Body) {
           </tbody>
         </table>
 
-        <!-- Secciones en texto plano para evitar “Mostrar texto citado” en Gmail -->
-        <div style="margin-top:14px;">
-          <p style="margin:0 0 6px 0;">
-            📣 <strong>Resultados y clasificación:</strong> se publicarán en Instagram
-            <a href="https://instagram.com/fansamigosdelduero" style="color:#2563eb;text-decoration:none;">@fansamigosdelduero</a>.
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin-top:16px;">
+          <p style="margin:0 0 6px;">📢 <strong>Resultados y clasificación:</strong> se publicarán en Instagram 
+            <span style="white-space:nowrap">@fansamigosdelduero</span>.
           </p>
-          <p style="margin:10px 0 4px 0;"><strong>ℹ️ Reglas</strong></p>
-          <ul style="margin:0;padding-left:18px;">
-            <li>Selecciona tu formación y escoge hasta 5 jugadoras.</li>
-            <li>Selecciona una capitana (los puntos que haga se multiplicarán x2).</li>
-          </ul>
+          <p style="margin:0;">ℹ️ <strong>Reglas:</strong> un equipo por jornada. Si envías varios equipos, <strong>solo se tendrá en cuenta el último</strong>.</p>
         </div>
 
         <p style="margin:16px 0 0;font-size:12px;color:#6b7280;">Si no fuiste tú, ignora este mensaje.</p>
@@ -140,19 +131,19 @@ function buildParticipantHtml(b: Body) {
 </html>`;
 }
 
-// Participante (texto)
 function buildParticipantText(b: Body) {
   const lines = roleOrder
     .map((r) => (b.lineup[r] || []).map((id) => `- ${id ? PLAYERS.get(id) || "—" : "—"}`).join("\n"))
     .join("\n\n");
   return `Fantasy – Amigos del Duero · Confirmación de envío
 
+Tu equipo se ha registrado correctamente.
 Formación: ${b.formation}
 
 ${lines}
 
-Resultados y clasificación: Instagram @fansamigosdelduero
-Regla: un equipo por jornada (si envías varios con el mismo nombre, cuenta el último).`;
+📢 Resultados y clasificación: se publicarán en Instagram @fansamigosdelduero.
+ℹ️ Reglas: un equipo por jornada. Si envías varios equipos, solo se tendrá en cuenta el último.`;
 }
 
 // Organización (solo lo esencial)
@@ -168,7 +159,6 @@ function buildOrgHtml(b: Body) {
       <div style="padding:16px;">
         <p style="margin:0 0 6px;"><strong>Participante:</strong> ${b.participantName} &lt;${b.participantEmail}&gt;</p>
         <p style="margin:0 0 10px;"><strong>Formación:</strong> ${b.formation}</p>
-
         <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background:linear-gradient(#15803d,#065f46);border-radius:12px;">
           <tbody>
             <tr>
