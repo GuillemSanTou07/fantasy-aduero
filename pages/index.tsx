@@ -163,12 +163,14 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
         <div style={{ position: "absolute", inset: 8, border: "2px solid rgba(255,255,255,.35)", borderRadius: 20 }} />
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
           {rows.map((row, idx) => {
-            const n = row.players.length || 1; // <-- nº de jugadoras en la fila
+            const n = row.players.length || 1;
             const colWidth = Math.max(24, Math.floor(100 / n) - 2);
+            const smallNames = n >= 3; // <-- cuando hay 3 en la misma fila, usar 13px
             return (
               <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
                 {row.players.map((slot, i) => {
                   const hasPlayer = !!slot.player;
+                  const isCaptain = !!slot.isCaptain;
                   return (
                     <button
                       key={i}
@@ -194,16 +196,16 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                             <RoleDot role={slot.role} />
                           </div>
 
-                          {/* Nombre centrado con ellipsis si no cabe; fuente un poco menor si hay 3 en la fila */}
+                          {/* Nombre centrado */}
                           <div
                             style={{
                               height: "100%",
+                              width: "100%",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
                               textAlign: "center",
                               padding: "0 8px",
-                              width: "100%",
                             }}
                           >
                             <span
@@ -211,13 +213,14 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                               style={{
                                 display: "block",
                                 width: "100%",
-                                fontSize: n === 3 ? 15 : 16,
+                                maxWidth: "100%",
+                                fontSize: smallNames ? 13 : 16, // <-- 13px si hay 3 en la fila
                                 fontWeight: 800,
                                 lineHeight: 1.25,
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
-                                color: "#111827", // <-- nunca se pinta dorado
+                                color: isCaptain ? "#111827" : "#111827", // sin color dorado
                               }}
                             >
                               {slot.player!.name}
@@ -251,33 +254,22 @@ function CaptainPicker({
   captainId: number | null;
   setCaptainId: (id: number) => void;
 }) {
-  // Cabecera común con subtítulo
-  const Header = (
-    <div style={{ marginBottom: 10 }}>
-      <strong style={{ fontSize: 14 }}>Selecciona capitana</strong>
+  if (selectedIds.length === 0) return (
+    <section
+      style={{
+        background: "#fff",
+        border: "1px solid #e5e7eb",
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+      }}
+    >
+      <strong style={{ fontSize: 14, display: "block", marginBottom: 6 }}>Selecciona capitana</strong>
       <div style={{ fontSize: 12, color: "#6b7280" }}>(los puntos de la capitana se multiplican x2)</div>
-    </div>
+      <div style={{ marginTop: 10, fontSize: 13, color: "#6b7280" }}>Aún no has elegido jugadoras.</div>
+    </section>
   );
 
-  // Estado vacío: mostrar tarjeta aunque no haya jugadoras
-  if (selectedIds.length === 0) {
-    return (
-      <section
-        style={{
-          background: "#fff",
-          border: "1px solid #e5e7eb",
-          borderRadius: 16,
-          padding: 16,
-          marginBottom: 16,
-        }}
-      >
-        {Header}
-        <div style={{ fontSize: 13, color: "#6b7280" }}>Aún no has elegido jugadoras.</div>
-      </section>
-    );
-  }
-
-  // Con jugadoras: chips seleccionables
   return (
     <section
       style={{
@@ -288,7 +280,13 @@ function CaptainPicker({
         marginBottom: 16,
       }}
     >
-      {Header}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div>
+          <strong style={{ fontSize: 14, display: "block" }}>Selecciona capitana</strong>
+          <div style={{ fontSize: 12, color: "#6b7280" }}>(los puntos de la capitana se multiplican x2)</div>
+        </div>
+        {/* (Quitado el texto "Capitana: ...") */}
+      </div>
 
       <div role="radiogroup" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {selectedIds.map((id) => {
@@ -316,7 +314,7 @@ function CaptainPicker({
             >
               <RoleDot role={role} size={22} />
               <span style={{ fontSize: 13 }}>{byId[id].name}</span>
-              {/* sin "C" adicional */}
+              {/* sin "C" visible */}
             </button>
           );
         })}
@@ -442,7 +440,7 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: "#eef2f7", color: "#111827" }}>
       <div style={{ maxWidth: 1040, margin: "0 auto", padding: 16 }}>
-        {/* Header (solo título) */}
+        {/* Header (sin textos extra) */}
         <header
           style={{
             background: "#0f172a",
@@ -480,8 +478,8 @@ export default function App() {
           </div>
         </section>
 
-        {/* Subtítulo centrado entre formaciones y campo */}
-        <div style={{ textAlign: "center", fontSize: 13, color: "#6b7280", margin: "8px 0 12px" }}>
+        {/* Subtítulo centrado entre selector y campo */}
+        <div style={{ textAlign: "center", fontSize: 13, color: "#6b7280", marginBottom: 10 }}>
           Selecciona tu formación y escoge hasta 5 jugadoras.
         </div>
 
@@ -491,7 +489,12 @@ export default function App() {
         </section>
 
         {/* Picker de capitana */}
-        <CaptainPicker selectedIds={selectedIds} getRoleOf={getRoleOf} captainId={captainId} setCaptainId={setCaptainId} />
+        <CaptainPicker
+          selectedIds={selectedIds}
+          getRoleOf={getRoleOf}
+          captainId={captainId}
+          setCaptainId={setCaptainId}
+        />
 
         {/* Botón enviar (abre modal de datos) */}
         <section
@@ -627,37 +630,44 @@ export default function App() {
             >
               <div style={{ marginBottom: 8 }}>
                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>Datos para el envío</h3>
+                <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                  Se enviará una copia del equipo que elijas al email indicado.
+                </div>
               </div>
 
-              <div style={{ display: "grid", gap: 10 }}>
+              <div style={{ display: "grid", gap: 12 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>Tu nombre</label>
+                  <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
                   <input
                     value={participantName}
                     onChange={(e) => setParticipantName(e.target.value)}
                     placeholder="Ej. Laura Pérez"
                     style={{
-                      width: "100%",
+                      width: "90%",            // <-- más estrecho
+                      maxWidth: 420,
+                      margin: "0 auto",        // centrado
                       padding: "8px 10px",
                       borderRadius: 10,
                       border: "1px solid #d1d5db",
-                      height: 34, // un poco más bajo
+                      height: 36,
                     }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>Tu email</label>
+                  <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu email</label>
                   <input
                     type="email"
                     value={participantEmail}
                     onChange={(e) => setParticipantEmail(e.target.value)}
                     placeholder="tu@email.com"
                     style={{
-                      width: "100%",
+                      width: "90%",            // <-- más estrecho
+                      maxWidth: 420,
+                      margin: "0 auto",        // centrado
                       padding: "8px 10px",
                       borderRadius: 10,
                       border: "1px solid #d1d5db",
-                      height: 34, // un poco más bajo
+                      height: 36,
                     }}
                   />
                 </div>
@@ -669,11 +679,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ marginTop: 12, fontSize: 12, color: "#6b7280" }}>
-                Se enviará una copia del equipo que elijas al email indicado.
-              </div>
-
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
                 <button
                   onClick={() => setContactOpen(false)}
                   style={{
