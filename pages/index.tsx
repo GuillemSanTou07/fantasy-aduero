@@ -1,3 +1,4 @@
+// pages/index.tsx
 import React from "react";
 
 /** ===== App Fantasy – Amigos del Duero (Next.js + TS) ===== */
@@ -168,14 +169,8 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
             return (
               <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
                 {row.players.map((slot, i) => {
-                  const border = slot.player
-                    ? `2px solid ${POS_COLORS[slot.role]}`
-                    : "2px dashed rgba(255,255,255,.7)";
-                  const bg = slot.isCaptain
-                    ? "#fde68a" // SOLO dorado si es capitana
-                    : slot.player
-                    ? "#fff"
-                    : "rgba(255,255,255,.10)"; // hueco normal (no dorado)
+                  const hasPlayer = !!slot.player;
+                  const bg = slot.isCaptain ? "#fde68a" : hasPlayer ? "#fff" : "rgba(255,255,255,.10)";
                   return (
                     <button
                       key={i}
@@ -185,20 +180,20 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                         maxWidth: 220,
                         minHeight: 104,
                         borderRadius: 16,
-                        border,
+                        border: hasPlayer ? `2px solid ${POS_COLORS[slot.role]}` : "2px dashed rgba(255,255,255,.7)",
                         background: bg,
-                        color: slot.player ? "#111827" : "#fff",
+                        color: hasPlayer ? "#111827" : "#fff",
                         padding: 12,
                         cursor: "pointer",
                         boxShadow: slot.isCaptain
                           ? "0 2px 10px rgba(245,158,11,.35)"
-                          : slot.player
+                          : hasPlayer
                           ? "0 2px 6px rgba(0,0,0,.08)"
                           : "none",
                         position: "relative",
                       }}
                     >
-                      {slot.player ? (
+                      {hasPlayer ? (
                         <>
                           {/* Badge rol arriba-izq (sobresale) */}
                           <div style={{ position: "absolute", top: -12, left: -12 }}>
@@ -217,7 +212,7 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                             }}
                           >
                             <span
-                              title={slot.player.name}
+                              title={slot.player!.name}
                               style={{
                                 fontSize: 16,
                                 fontWeight: 800,
@@ -226,12 +221,12 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                                 whiteSpace: "normal",
                               }}
                             >
-                              {slot.player.name}
+                              {slot.player!.name}
                             </span>
                           </div>
                         </>
                       ) : (
-                        <div style={{ textAlign: "center", fontWeight: 700 }}>Añadir</div>
+                        <div style={{ textAlign: "center", fontWeight: 700, opacity: 0.95 }}>Añadir</div>
                       )}
                     </button>
                   );
@@ -313,6 +308,14 @@ export default function App() {
   const [captainId, setCaptainId] = React.useState<number | null>(null);
   const [modal, setModal] = React.useState<{ role: Role; index: number } | null>(null);
 
+  // Modal de contacto (nombre/email)
+  const [contactOpen, setContactOpen] = React.useState(false);
+  const [participantName, setParticipantName] = React.useState("");
+  const [participantEmail, setParticipantEmail] = React.useState("");
+  const [botField, setBotField] = React.useState("");
+
+  const [sending, setSending] = React.useState(false);
+
   const selected = new Set(Object.values(lineup).flat().filter(Boolean) as number[]);
   const selectedIds = Array.from(selected);
 
@@ -346,7 +349,6 @@ export default function App() {
       const idToClear = prev[modal!.role][modal!.index];
       const arr = [...prev[modal!.role]];
       arr[modal!.index] = null;
-      // si quitamos a la capitana, reseteamos
       if (idToClear && idToClear === captainId) setCaptainId(null);
       return { ...prev, [modal!.role]: arr };
     });
@@ -375,19 +377,17 @@ export default function App() {
     }));
   }, [counts, lineup, captainId]);
 
-  // Envío por email (via API)
-  const [participantName, setParticipantName] = React.useState("");
-  const [participantEmail, setParticipantEmail] = React.useState("");
-  const [botField, setBotField] = React.useState("");
-  const [sending, setSending] = React.useState(false);
-
-  async function send() {
+  /** Clic en Enviar selección -> abre modal de contacto si está todo OK */
+  function handleClickEnviar() {
     const needed = (counts.PT + counts.DF + counts.MC + counts.DL) as number;
     const chosen = Object.values(lineup).flat().filter(Boolean).length;
     if (chosen !== needed) return alert("Completa todos los huecos.");
     if (!captainId) return alert("Selecciona capitana en el apartado correspondiente.");
-    if (!participantName || !participantEmail) return alert("Rellena nombre y tu email.");
+    setContactOpen(true);
+  }
 
+  async function confirmAndSend() {
+    if (!participantName || !participantEmail) return alert("Rellena nombre y tu email.");
     setSending(true);
     try {
       const res = await fetch("/api/submit", {
@@ -403,6 +403,7 @@ export default function App() {
         }),
       });
       if (!res.ok) throw new Error(await res.text());
+      setContactOpen(false);
       alert("✅ Equipo enviado. ¡Suerte!");
     } catch (e: any) {
       alert("❌ No se pudo enviar: " + e.message);
@@ -471,7 +472,7 @@ export default function App() {
           setCaptainId={setCaptainId}
         />
 
-        {/* Datos y envío (centrado) */}
+        {/* Botón enviar (los campos ahora van en modal) */}
         <section
           style={{
             background: "#fff",
@@ -483,81 +484,29 @@ export default function App() {
             justifyContent: "center",
           }}
         >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 820,
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-              gap: 12,
-              justifyItems: "center",
-              alignItems: "end",
-            }}
-          >
-            <div style={{ width: "min(100%, 380px)" }}>
-              <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
-              <input
-                value={participantName}
-                onChange={(e) => setParticipantName(e.target.value)}
-                placeholder="Ej. Laura Pérez"
-                style={{
-                  width: "100%",
-                  padding: "7px 10px",
-                  borderRadius: 10,
-                  border: "1px solid #d1d5db",
-                  height: 34,
-                }}
-              />
-            </div>
-            <div style={{ width: "min(100%, 380px)" }}>
-              <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu email</label>
-              <input
-                type="email"
-                value={participantEmail}
-                onChange={(e) => setParticipantEmail(e.target.value)}
-                placeholder="tu@email.com"
-                style={{
-                  width: "100%",
-                  padding: "7px 10px",
-                  borderRadius: 10,
-                  border: "1px solid #d1d5db",
-                  height: 34,
-                }}
-              />
-            </div>
-
-            {/* Honeypot anti-bots */}
-            <div style={{ display: "none" }} aria-hidden>
-              <label>Deja esto vacío</label>
-              <input value={botField} onChange={(e) => setBotField(e.target.value)} />
-            </div>
-
-            <div style={{ gridColumn: "1 / -1", width: "min(100%, 480px)" }}>
-              <button
-                onClick={send}
-                disabled={sending}
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  background: sending ? "#6b7280" : "#111827",
-                  color: "#fff",
-                  border: 0,
-                  borderRadius: 12,
-                  fontWeight: 800,
-                  cursor: sending ? "not-allowed" : "pointer",
-                }}
-              >
-                {sending ? "Enviando..." : "Enviar selección"}
-              </button>
-            </div>
-
-            <div style={{ gridColumn: "1 / -1", marginTop: 8, fontSize: 12, color: "#6b7280", textAlign: "center" }}>
+          <div style={{ width: "min(100%, 480px)" }}>
+            <button
+              onClick={handleClickEnviar}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                background: "#111827",
+                color: "#fff",
+                border: 0,
+                borderRadius: 12,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              Enviar selección
+            </button>
+            <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280", textAlign: "center" }}>
               <em>Se enviará una copia del equipo que elijas al email indicado.</em>
             </div>
           </div>
         </section>
 
-        {/* Modal selección */}
+        {/* Modal selección de jugadora */}
         {modal && (
           <div
             style={{
@@ -567,7 +516,7 @@ export default function App() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              zIndex: 50,
+              zIndex: 60,
             }}
             onClick={() => setModal(null)}
           >
@@ -628,6 +577,112 @@ export default function App() {
                   Vaciar posición
                 </button>
                 <div style={{ fontSize: 12, color: "#6b7280" }}>Solo puedes alinear jugadoras del equipo.</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de contacto (nombre/email) */}
+        {contactOpen && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 70,
+            }}
+            onClick={() => setContactOpen(false)}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: 520,
+                background: "#fff",
+                borderRadius: 16,
+                padding: 16,
+                boxShadow: "0 8px 30px rgba(0,0,0,.2)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ marginBottom: 8 }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>Datos de contacto</h3>
+                <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                  Te enviaremos una copia del equipo al email indicado.
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gap: 12 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
+                  <input
+                    value={participantName}
+                    onChange={(e) => setParticipantName(e.target.value)}
+                    placeholder="Ej. Laura Pérez"
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: "1px solid #d1d5db",
+                      height: 36,
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu email</label>
+                  <input
+                    type="email"
+                    value={participantEmail}
+                    onChange={(e) => setParticipantEmail(e.target.value)}
+                    placeholder="tu@email.com"
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: "1px solid #d1d5db",
+                      height: 36,
+                    }}
+                  />
+                </div>
+
+                {/* Honeypot anti-bots */}
+                <div style={{ display: "none" }} aria-hidden>
+                  <label>Deja esto vacío</label>
+                  <input value={botField} onChange={(e) => setBotField(e.target.value)} />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
+                <button
+                  onClick={() => setContactOpen(false)}
+                  style={{
+                    border: 0,
+                    background: "#f3f4f6",
+                    padding: "8px 12px",
+                    borderRadius: 10,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmAndSend}
+                  disabled={sending}
+                  style={{
+                    border: 0,
+                    background: sending ? "#6b7280" : "#111827",
+                    color: "#fff",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    cursor: sending ? "not-allowed" : "pointer",
+                    fontWeight: 800,
+                  }}
+                >
+                  {sending ? "Enviando..." : "Confirmar y enviar"}
+                </button>
               </div>
             </div>
           </div>
