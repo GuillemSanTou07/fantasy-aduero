@@ -37,7 +37,7 @@ function formationToCounts(f: typeof FORMATIONS[number]) {
   return { PT: pt || 0, DF: df || 0, MC: mc || 0, DL: dl || 0 };
 }
 
-// === Resumen para email (sin cambios de lógica)
+// === Resumen para email (misma lógica)
 function buildSummaryText({
   formation, lineup, captainId, participantName, participantEmail,
 }: {
@@ -52,7 +52,14 @@ function buildSummaryText({
     return `${r}: ${names.join(", ")}`;
   }).join("\n");
   const cap = captainId ? byId[captainId]?.name : "—";
-  return `Fantasy – Selección\n\nFormación: ${formation}\n${roleLines}\n\nCapitana: ${cap}\n\nParticipante: ${participantName} <${participantEmail}>`;
+  return `Fantasy – Selección
+
+Formación: ${formation}
+${roleLines}
+
+Capitana: ${cap}
+
+Participante: ${participantName} <${participantEmail}>`;
 }
 
 function useLineup(formation: typeof FORMATIONS[number]) {
@@ -96,7 +103,7 @@ function Chip({
         padding: "12px 12px",
         borderRadius: 12,
         border: active ? "1px solid #0f172a" : "1px solid #e5e7eb",
-        background: active ? "#0f172a" : "#fff",          // ⬅ activo en color de la página
+        background: active ? "#0f172a" : "#fff",
         color: active ? "#fff" : "#111827",
         fontWeight: 900,
         cursor: "pointer",
@@ -116,7 +123,8 @@ function RoleBadge({ role, size = 28 }: { role: Role; size?: number }) {
       style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
         width: size, height: size, borderRadius: 999,
-        background: POS_COLORS[role], color: "#fff", fontSize: size < 28 ? 11 : 12, fontWeight: 900,
+        background: POS_COLORS[role], color: "#fff",
+        fontSize: size < 28 ? 11 : 12, fontWeight: 900,
       }}
     >
       {role}
@@ -132,7 +140,7 @@ type Slot = {
   onCaptain?: () => void;
 };
 
-// Campo
+// Campo centrado + responsive
 function Pitch({ rows, isMobile }: { rows: Array<{ role: Role; players: Slot[] }>; isMobile: boolean }) {
   return (
     <div style={{ display: "flex", justifyContent: "center" }}>
@@ -148,8 +156,8 @@ function Pitch({ rows, isMobile }: { rows: Array<{ role: Role; players: Slot[] }
         <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
           {rows.map((row, idx) => {
             const n = row.players.length || 1;
-            const compact = isMobile && n >= 2;         // ⬅️ modo compacto móvil para 2 o más
-            const ultraCompact = isMobile && n >= 3;     // ⬅️ ajustes extra cuando hay 3
+            const compact = isMobile && n >= 2;
+            const ultraCompact = isMobile && n >= 3;
             const colWidth = Math.max(22, Math.floor(100 / n) - 2);
             return (
               <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
@@ -160,7 +168,7 @@ function Pitch({ rows, isMobile }: { rows: Array<{ role: Role; players: Slot[] }
                     style={{
                       width: `${colWidth}%`,
                       maxWidth: compact ? 190 : 220,
-                      minHeight: compact ? 84 : 92,
+                      minHeight: compact ? 86 : 96,
                       borderRadius: 16,
                       border: slot.player ? `2px solid ${POS_COLORS[slot.role]}` : "2px dashed rgba(255,255,255,.7)",
                       background: slot.player ? "#fff" : "rgba(255,255,255,.08)",
@@ -172,38 +180,19 @@ function Pitch({ rows, isMobile }: { rows: Array<{ role: Role; players: Slot[] }
                     }}
                   >
                     {slot.player ? (
-                      // ====== contenido tarjeta ======
                       compact ? (
-                        // MODO COMPACTO: rol izq (pequeño) + nombre centrado + C flotando dcha
-                        <div style={{ display: "grid", alignItems: "center" }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                        // ====== COMPACTO / ULTRA-COMPACTO (móvil con 2 o 3 jugadoras) ======
+                        <>
+                          {/* Badges fijos en esquinas, dentro de la tarjeta */}
+                          <div style={{ position: "absolute", top: 8, left: 8 }}>
                             <RoleBadge role={slot.role} size={ultraCompact ? 22 : 24} />
-                            <span
-                              title={slot.player.name}
-                              style={{
-                                flex: 1,
-                                fontSize: ultraCompact ? 14 : 15,
-                                fontWeight: 800,
-                                lineHeight: "24px",
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                maxWidth: "70%",
-                                textAlign: "center",
-                              }}
-                            >
-                              {slot.player.name}
-                            </span>
                           </div>
-                          {/* C flotante para que no tape el nombre ni choque con la tarjeta vecina */}
                           <button
                             onClick={(e) => { e.stopPropagation(); slot.onCaptain && slot.onCaptain(); }}
                             title={slot.isCaptain ? "Quitar capitana" : "Marcar como capitana"}
                             style={{
-                              position: "absolute",
-                              top: -10,
-                              right: -10,
-                              width: 28, height: 28, borderRadius: 999,
+                              position: "absolute", top: 6, right: 6,
+                              width: 26, height: 26, borderRadius: 999,
                               border: slot.isCaptain ? "2px solid #f59e0b" : "1px solid #e5e7eb",
                               background: slot.isCaptain ? "#fde68a" : "#fff",
                               color: "#92400e", fontSize: 12, fontWeight: 900, cursor: "pointer",
@@ -212,9 +201,29 @@ function Pitch({ rows, isMobile }: { rows: Array<{ role: Role; players: Slot[] }
                           >
                             C
                           </button>
-                        </div>
+                          {/* Nombre centrado con 2 líneas máx */}
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+                            <span
+                              title={slot.player.name}
+                              style={{
+                                fontSize: ultraCompact ? 14 : 15,
+                                fontWeight: 800,
+                                lineHeight: 1.2,
+                                maxWidth: "100%",
+                                padding: "0 32px", // deja hueco para los badges en esquinas
+                                textAlign: "center",
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical" as any,
+                                overflow: "hidden",
+                              }}
+                            >
+                              {slot.player.name}
+                            </span>
+                          </div>
+                        </>
                       ) : (
-                        // MODO NORMAL (desktop o 1 tarjeta): rol — nombre — C en línea
+                        // ====== NORMAL (desktop o 1 jugadora) ======
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
                           <RoleBadge role={slot.role} />
                           <span
@@ -222,7 +231,7 @@ function Pitch({ rows, isMobile }: { rows: Array<{ role: Role; players: Slot[] }
                             style={{
                               fontSize: 16, fontWeight: 800, lineHeight: "28px",
                               whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                              maxWidth: 140, textAlign: "center",
+                              maxWidth: 160, textAlign: "center",
                             }}
                           >
                             {slot.player.name}
@@ -262,18 +271,18 @@ export default function App() {
   const [captainId, setCaptainId] = React.useState<number | null>(null);
   const [modal, setModal] = React.useState<{ role: Role; index: number } | null>(null);
 
-  // detectar viewport para el modo compacto
+  // detectar viewport para activar modo compacto
   const [isMobile, setIsMobile] = React.useState(false);
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const mq = window.matchMedia("(max-width: 640px)");
-    const handler = (e: MediaQueryListEvent | MediaQueryList) => setIsMobile((e as MediaQueryList).matches ?? (e as any).matches);
-    handler(mq as any);
-    if (mq.addEventListener) mq.addEventListener("change", handler as any);
-    else mq.addListener(handler as any);
+    const handler = () => setIsMobile(mq.matches);
+    handler();
+    if (mq.addEventListener) mq.addEventListener("change", handler);
+    else mq.addListener(handler);
     return () => {
-      if (mq.removeEventListener) mq.removeEventListener("change", handler as any);
-      else mq.removeListener(handler as any);
+      if (mq.removeEventListener) mq.removeEventListener("change", handler);
+      else mq.removeListener(handler);
     };
   }, []);
 
@@ -327,10 +336,6 @@ export default function App() {
   const [botField, setBotField] = React.useState("");
   const [sending, setSending] = React.useState(false);
 
-  function summary() {
-    return buildSummaryText({ formation, lineup, captainId, participantName, participantEmail });
-  }
-
   async function send() {
     const needed = (counts.PT + counts.DF + counts.MC + counts.DL) as number;
     const chosen = Object.values(lineup).flat().filter(Boolean).length;
@@ -349,7 +354,6 @@ export default function App() {
         throw new Error(t || "Error al enviar");
       }
       alert("✅ Equipo enviado. ¡Suerte!");
-      // window.location.href = `mailto:?subject=${encodeURIComponent("Fantasy – Mi equipo")}&body=${encodeURIComponent(summary())}`;
     } catch (e: any) {
       alert("❌ No se pudo enviar: " + e.message);
     } finally {
@@ -361,11 +365,18 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: "#eef2f7", color: "#111827" }}>
       <div style={{ maxWidth: 1040, margin: "0 auto", padding: 16 }}>
         {/* Header */}
-        <header style={{ background: "#0f172a", color: "#fff", borderRadius: 14, padding: "12px 16px", marginBottom: 12, boxShadow: "0 2px 10px rgba(0,0,0,.05)" }}>
+        <header style={{ background: "#0f172a", color: "#fff", borderRadius: 14, padding: "12px 16px", marginBottom: 10, boxShadow: "0 2px 10px rgba(0,0,0,.05)" }}>
           <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0, letterSpacing: .2 }}>⚽ Fantasy – Amigos del Duero</h1>
+          {/* Cómo funciona (debajo del título) */}
+          <div style={{ marginTop: 8, fontSize: 13, color: "rgba(255,255,255,.85)" }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <div>• Selecciona tu formación y escoge hasta 5 jugadoras por posición.</div>
+              <div>• Selecciona una <strong>capitana</strong> (los puntos que haga se multiplicarán <strong>x2</strong>).</div>
+            </div>
+          </div>
         </header>
 
-        {/* Formación 3×3 con chip activo en color de marca */}
+        {/* Formación 3×3 */}
         <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
             {FORMATIONS.map((f) => (
@@ -401,6 +412,7 @@ export default function App() {
                 style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #d1d5db", height: 42 }}
               />
             </div>
+            {/* Honeypot */}
             <div style={{ display: "none" }} aria-hidden>
               <label>Deja esto vacío</label>
               <input value={botField} onChange={(e) => setBotField(e.target.value)} />
@@ -420,14 +432,9 @@ export default function App() {
             </div>
           </div>
 
+          {/* Nota de email (solo esto aquí) */}
           <div style={{ marginTop: 12, fontSize: 12, color: "#6b7280" }}>
             <em>Se enviará una copia del equipo que elijas al email indicado.</em>
-            <div style={{ height: 6 }} />
-            <strong>Cómo funciona:</strong>
-            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
-              <li>Selecciona tu formación y escoge hasta 5 jugadoras por posición.</li>
-              <li>Selecciona una capitana (los puntos que haga se multiplicarán x2).</li>
-            </ul>
           </div>
         </section>
 
@@ -440,12 +447,14 @@ export default function App() {
             <div style={{ width: "100%", maxWidth: 520, background: "#fff", borderRadius: 16, padding: 16 }} onClick={(e) => e.stopPropagation()}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <strong>Selecciona {modal.role}</strong>
-                <button onClick={() => setModal(null)} style={{ border: 0, background: "#f3f4f6", padding: "6px 10px", borderRadius: 8, cursor: "pointer" }}>Cerrar</button>
+                <button onClick={() => setModal(null)} style={{ border: 0, background: "#f3f4f6", padding: "6px 10px", borderRadius: 8, cursor: "pointer" }}>
+                  Cerrar
+                </button>
               </div>
               <div style={{ display: "grid", gap: 8, maxHeight: "60vh", overflow: "auto" }}>
-                {({ PT: PLAYERS.filter((p) => hasRole(p, "PT")), DF: PLAYERS.filter((p) => hasRole(p, "DF")), MC: PLAYERS.filter((p) => hasRole(p, "MC")), DL: PLAYERS.filter((p) => hasRole(p, "DL")) } as any)[modal.role]
-                  .filter((p: Player) => !selected.has(p.id) || lineup[modal.role][modal.index] === p.id)
-                  .map((p: Player) => (
+                {roleOptions[modal.role]
+                  .filter((p) => !selected.has(p.id) || lineup[modal.role][modal.index] === p.id)
+                  .map((p) => (
                     <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}>
                       <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                         <RoleBadge role={modal.role} />
@@ -461,7 +470,9 @@ export default function App() {
                   ))}
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
-                <button onClick={clearSlot} style={{ border: 0, background: "#f3f4f6", padding: "8px 12px", borderRadius: 10, cursor: "pointer" }}>Vaciar posición</button>
+                <button onClick={clearSlot} style={{ border: 0, background: "#f3f4f6", padding: "8px 12px", borderRadius: 10, cursor: "pointer" }}>
+                  Vaciar posición
+                </button>
                 <div style={{ fontSize: 12, color: "#6b7280" }}>Solo puedes alinear jugadoras del equipo.</div>
               </div>
             </div>
