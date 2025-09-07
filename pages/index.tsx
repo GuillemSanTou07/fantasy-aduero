@@ -1,4 +1,3 @@
-// pages/index.tsx
 import React from "react";
 
 /** ===== App Fantasy – Amigos del Duero (Next.js + TS) ===== */
@@ -170,7 +169,7 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
               <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
                 {row.players.map((slot, i) => {
                   const hasPlayer = !!slot.player;
-                  const isCaptain = !!slot.isCaptain; // destacar sin fondo dorado
+                  const isCaptain = !!slot.isCaptain;
                   return (
                     <button
                       key={i}
@@ -185,12 +184,7 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                         color: hasPlayer ? "#111827" : "#fff",
                         padding: 12,
                         cursor: "pointer",
-                        // Anillo exterior ámbar para la capitana (sin cambiar el fondo)
-                        boxShadow: isCaptain
-                          ? "0 0 0 3px #f59e0b, 0 2px 6px rgba(0,0,0,.08)"
-                          : hasPlayer
-                          ? "0 2px 6px rgba(0,0,0,.08)"
-                          : "none",
+                        boxShadow: hasPlayer ? "0 2px 6px rgba(0,0,0,.08)" : "none",
                         position: "relative",
                       }}
                     >
@@ -201,33 +195,7 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                             <RoleDot role={slot.role} />
                           </div>
 
-                          {/* Insignia C arriba-derecha SOLO si capitana */}
-                          {isCaptain && (
-                            <span
-                              title="Capitana"
-                              style={{
-                                position: "absolute",
-                                top: -12,
-                                right: -12,
-                                width: 26,
-                                height: 26,
-                                borderRadius: 999,
-                                background: "#ffffff",
-                                border: "2px solid #f59e0b",
-                                color: "#b45309",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontWeight: 900,
-                                fontSize: 12,
-                                boxShadow: "0 2px 8px rgba(245,158,11,.25)",
-                              }}
-                            >
-                              C
-                            </span>
-                          )}
-
-                          {/* Nombre centrado */}
+                          {/* Nombre centrado — si es capitana, en dorado */}
                           <div
                             style={{
                               height: "100%",
@@ -246,6 +214,7 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                                 lineHeight: 1.25,
                                 wordBreak: "break-word",
                                 whiteSpace: "normal",
+                                color: isCaptain ? "#b45309" : "#111827", // <-- dorado SOLO en el nombre
                               }}
                             >
                               {slot.player!.name}
@@ -312,7 +281,7 @@ function CaptainPicker({
                 padding: "8px 10px",
                 borderRadius: 999,
                 border: active ? "2px solid #f59e0b" : "1px solid #e5e7eb",
-                background: active ? "#fff" : "#fff",
+                background: "#fff",
                 fontWeight: 800,
                 cursor: "pointer",
                 boxShadow: active ? "0 0 0 3px rgba(245,158,11,.25)" : "none",
@@ -405,7 +374,7 @@ export default function App() {
     [lineup]
   );
 
-  // Si no hay ninguna jugadora en el campo, limpia capitana (evita resalto accidental)
+  // Si no hay jugadoras, limpia capitana
   React.useEffect(() => {
     const anySelected = Object.values(lineup).some((arr) => arr.some(Boolean));
     if (!anySelected && captainId !== null) setCaptainId(null);
