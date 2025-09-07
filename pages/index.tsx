@@ -1,15 +1,14 @@
+// pages/index.tsx
 import React from "react";
-
-/** ===== App Fantasy – Amigos del Duero (Next.js + TS) ===== */
 
 type Role = "PT" | "DF" | "MC" | "DL";
 
 const POS: Role[] = ["PT", "DF", "MC", "DL"];
 const POS_COLORS: Record<Role, string> = {
-  PT: "#f59e0b", // ámbar
-  DF: "#3b82f6", // azul
-  MC: "#10b981", // verde
-  DL: "#ef4444", // rojo
+  PT: "#f59e0b",
+  DF: "#3b82f6",
+  MC: "#10b981",
+  DL: "#ef4444",
 };
 
 const FORMATIONS = [
@@ -25,7 +24,6 @@ const FORMATIONS = [
 ] as const;
 
 type Player = { id: number; name: string; roles: Role[] };
-
 const PLAYERS: Player[] = [
   { id: 1, name: "Ari Rodríguez", roles: ["DL"] },
   { id: 2, name: "Paula Díaz", roles: ["MC", "DF"] },
@@ -42,12 +40,11 @@ const PLAYERS: Player[] = [
   { id: 13, name: "Jasmine Sayagués", roles: ["DF"] },
   { id: 14, name: "Alba Muñiz", roles: ["MC"] },
 ];
-
-const byId = Object.fromEntries(PLAYERS.map((p) => [p.id, p])) as Record<number, Player>;
+const byId = Object.fromEntries(PLAYERS.map(p => [p.id, p])) as Record<number, Player>;
 const hasRole = (p: Player, r: Role) => (p.roles || []).includes(r);
 
 function formationToCounts(f: typeof FORMATIONS[number]) {
-  const [pt, df, mc, dl] = f.split("-").map((n) => parseInt(n, 10));
+  const [pt, df, mc, dl] = f.split("-").map(n => parseInt(n, 10));
   return { PT: pt || 0, DF: df || 0, MC: mc || 0, DL: dl || 0 };
 }
 
@@ -57,7 +54,6 @@ function useLineup(formation: typeof FORMATIONS[number]) {
     () => (r: Role) => Array.from({ length: counts[r] as number }, () => null as number | null),
     [counts]
   );
-
   const [lineup, setLineup] = React.useState<Record<Role, Array<number | null>>>({
     PT: makeEmpty("PT"),
     DF: makeEmpty("DF"),
@@ -66,7 +62,7 @@ function useLineup(formation: typeof FORMATIONS[number]) {
   });
 
   React.useEffect(() => {
-    setLineup((prev) => {
+    setLineup(prev => {
       const resize = (arr: Array<number | null>, n: number) => {
         const kept = (arr || []).filter(Boolean).slice(0, n) as Array<number | null>;
         while (kept.length < n) kept.push(null);
@@ -84,31 +80,21 @@ function useLineup(formation: typeof FORMATIONS[number]) {
   return { lineup, setLineup, counts };
 }
 
-/** ===== Chips (selector de formación) ===== */
-function Chip({
-  children,
-  active,
-  onClick,
-}: {
-  children: React.ReactNode;
-  active?: boolean;
-  onClick?: () => void;
-}) {
+function Chip({ children, active, onClick }: { children: React.ReactNode; active?: boolean; onClick?: () => void }) {
   return (
     <button
       onClick={onClick}
       title={String(children)}
       style={{
-        padding: "12px 12px",
-        borderRadius: 12,
-        border: active ? "1px solid #0f172a" : "1px solid #e5e7eb",
+        padding: "10px 14px",
+        borderRadius: 14,
+        border: active ? "0" : "1px solid #e5e7eb",
         background: active ? "#0f172a" : "#fff",
         color: active ? "#fff" : "#111827",
-        fontWeight: 900,
+        fontWeight: 800,
         cursor: "pointer",
-        width: "100%",
-        boxShadow: active ? "0 4px 14px rgba(15,23,42,.25)" : "none",
-        transition: "all .15s ease",
+        minWidth: 96,
+        boxShadow: active ? "inset 0 0 0 1px #0f172a, 0 2px 8px rgba(0,0,0,.15)" : "0 1px 4px rgba(0,0,0,.05)",
       }}
     >
       {children}
@@ -116,21 +102,23 @@ function Chip({
   );
 }
 
-function RoleDot({ role, size = 26 }: { role: Role; size?: number }) {
+function RoleDot({ role, size = 28 }: { role: Role; size?: number }) {
   return (
     <span
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
+        position: "absolute",
+        top: -size / 2 + 4,
+        left: -size / 2 + 4,
         width: size,
         height: size,
         borderRadius: 999,
         background: POS_COLORS[role],
         color: "#fff",
-        fontSize: size < 26 ? 11 : 12,
+        fontSize: Math.max(11, Math.floor(size * 0.38)),
         fontWeight: 900,
-        pointerEvents: "none",
+        lineHeight: `${size}px`,
+        textAlign: "center",
+        boxShadow: "0 1px 3px rgba(0,0,0,.25)",
       }}
     >
       {role}
@@ -138,179 +126,135 @@ function RoleDot({ role, size = 26 }: { role: Role; size?: number }) {
   );
 }
 
+function CaptainCrown() {
+  const size = 24;
+  return (
+    <span
+      aria-label="Capitana"
+      title="Capitana"
+      style={{
+        position: "absolute",
+        top: -size / 2 + 4,
+        right: -size / 2 + 4,
+        width: size,
+        height: size,
+        borderRadius: 999,
+        background: "#fff",
+        border: "2px solid #f59e0b",
+        color: "#b45309",
+        fontSize: 14,
+        fontWeight: 900,
+        lineHeight: `${size - 4}px`,
+        textAlign: "center",
+        boxShadow: "0 1px 3px rgba(0,0,0,.25)",
+      }}
+    >
+      👑
+    </span>
+  );
+}
+
 type Slot = {
   role: Role;
   player: Player | null;
+  rowSize: number;
   isCaptain?: boolean;
   onClick?: () => void;
 };
 
-function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "center" }}>
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 760,
-          borderRadius: 24,
-          padding: 16,
-          background: "linear-gradient(135deg,#15803d,#065f46)",
-          position: "relative",
-          overflow: "hidden",
-          boxShadow: "inset 0 2px 8px rgba(0,0,0,.35)",
-        }}
-      >
-        <div style={{ position: "absolute", inset: 8, border: "2px solid rgba(255,255,255,.35)", borderRadius: 20 }} />
-        <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
-          {rows.map((row, idx) => {
-            const n = row.players.length || 1;
-            const colWidth = Math.max(24, Math.floor(100 / n) - 2);
-            return (
-              <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
-                {row.players.map((slot, i) => {
-                  const hasPlayer = !!slot.player;
-                  const isCaptain = !!slot.isCaptain;
-                  return (
-                    <button
-                      key={i}
-                      onClick={slot.onClick}
-                      style={{
-                        width: `${colWidth}%`,
-                        maxWidth: 220,
-                        minHeight: 104,
-                        borderRadius: 16,
-                        border: hasPlayer ? `2px solid ${POS_COLORS[slot.role]}` : "2px dashed rgba(255,255,255,.7)",
-                        background: hasPlayer ? "#fff" : "rgba(255,255,255,.10)",
-                        color: hasPlayer ? "#111827" : "#fff",
-                        padding: 12,
-                        cursor: "pointer",
-                        boxShadow: hasPlayer ? "0 2px 6px rgba(0,0,0,.08)" : "none",
-                        position: "relative",
-                      }}
-                    >
-                      {hasPlayer ? (
-                        <>
-                          {/* Badge rol arriba-izq (sobresale) */}
-                          <div style={{ position: "absolute", top: -12, left: -12 }}>
-                            <RoleDot role={slot.role} />
-                          </div>
+function CardSlot({ role, player, rowSize, isCaptain, onClick }: Slot) {
+  // Fuente adaptativa según cuántas cartas hay en la fila
+  const nameFont = rowSize >= 3 ? 15 : rowSize === 2 ? 16 : 18;
 
-                          {/* Nombre centrado — si es capitana, en dorado */}
-                          <div
-                            style={{
-                              height: "100%",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              textAlign: "center",
-                              padding: "0 8px",
-                            }}
-                          >
-                            <span
-                              title={slot.player!.name}
-                              style={{
-                                fontSize: 16,
-                                fontWeight: 800,
-                                lineHeight: 1.25,
-                                wordBreak: "break-word",
-                                whiteSpace: "normal",
-                                color: isCaptain ? "#b45309" : "#111827", // <-- dorado SOLO en el nombre
-                              }}
-                            >
-                              {slot.player!.name}
-                            </span>
-                          </div>
-                        </>
-                      ) : (
-                        <div style={{ textAlign: "center", fontWeight: 700, opacity: 0.95 }}>Añadir</div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        position: "relative",
+        width: "100%",
+        maxWidth: 260,
+        minHeight: 96,
+        borderRadius: 16,
+        background: player ? "#fff" : "rgba(255,255,255,.08)",
+        border: player ? `2px solid ${POS_COLORS[role]}` : "2px dashed rgba(255,255,255,.85)",
+        color: player ? "#111827" : "#fff",
+        padding: 14,
+        cursor: "pointer",
+        boxShadow: player ? "0 2px 6px rgba(0,0,0,.08)" : "none",
+        overflow: "hidden",
+      }}
+    >
+      {player ? (
+        <>
+          <RoleDot role={role} />
+          {isCaptain && <CaptainCrown />}
+          <div
+            style={{
+              // nombre centrado, 1 línea, sin romper palabras
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              textAlign: "center",
+              fontSize: nameFont,
+              fontWeight: 800,
+              padding: "6px 10px 4px",
+              marginTop: 4,
+            }}
+          >
+            {player.name}
+          </div>
+        </>
+      ) : (
+        <div style={{ textAlign: "center", fontWeight: 800, opacity: 0.9 }}>Añadir</div>
+      )}
+    </button>
   );
 }
 
-/** ===== Picker de Capitana ===== */
-function CaptainPicker({
-  selectedIds,
-  getRoleOf,
-  captainId,
-  setCaptainId,
+function Pitch({
+  rows,
 }: {
-  selectedIds: number[];
-  getRoleOf: (id: number) => Role | null;
-  captainId: number | null;
-  setCaptainId: (id: number) => void;
+  rows: Array<{ role: Role; players: Array<{ player: Player | null; isCaptain: boolean }> }>;
 }) {
-  if (selectedIds.length === 0) return null;
   return (
-    <section
+    <div
       style={{
-        background: "#fff",
-        border: "1px solid #e5e7eb",
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 16,
+        width: "100%",
+        borderRadius: 28,
+        padding: 18,
+        background: "linear-gradient(145deg, #176a3a, #0e5a3a)",
+        position: "relative",
+        overflow: "hidden",
+        boxShadow: "inset 0 3px 10px rgba(0,0,0,.35)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <strong style={{ fontSize: 14 }}>Selecciona capitana</strong>
-        {captainId ? <span style={{ fontSize: 12, color: "#065f46" }}>Capitana: {byId[captainId].name}</span> : null}
-      </div>
-
-      <div role="radiogroup" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {selectedIds.map((id) => {
-          const role = getRoleOf(id) || "DL";
-          const active = id === captainId;
+      <div style={{ position: "absolute", inset: 10, border: "2px solid rgba(255,255,255,.38)", borderRadius: 22 }} />
+      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
+        {rows.map((row, idx) => {
+          const rowSize = row.players.length || 1;
+          const colWidth = Math.max(22, Math.floor(100 / rowSize) - 2);
           return (
-            <button
-              key={id}
-              role="radio"
-              aria-checked={active}
-              onClick={() => setCaptainId(id)}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "8px 10px",
-                borderRadius: 999,
-                border: active ? "2px solid #f59e0b" : "1px solid #e5e7eb",
-                background: "#fff",
-                fontWeight: 800,
-                cursor: "pointer",
-                boxShadow: active ? "0 0 0 3px rgba(245,158,11,.25)" : "none",
-              }}
-              title={`Hacer capitana a ${byId[id].name}`}
-            >
-              <RoleDot role={role} size={22} />
-              <span style={{ fontSize: 13 }}>{byId[id].name}</span>
-              {active && (
-                <span
-                  style={{
-                    marginLeft: 4,
-                    fontSize: 11,
-                    fontWeight: 900,
-                    padding: "2px 6px",
-                    borderRadius: 999,
-                    border: "1px solid #f59e0b",
-                    color: "#b45309",
-                    background: "#fff",
-                  }}
-                >
-                  C
-                </span>
-              )}
-            </button>
+            <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+              {row.players.map((slot, i) => (
+                <div key={i} style={{ width: `${colWidth}%`, display: "flex", justifyContent: "center" }}>
+                  <CardSlot
+                    role={row.role}
+                    player={slot.player}
+                    rowSize={rowSize}
+                    isCaptain={slot.isCaptain}
+                    onClick={() => {
+                      /* abre modal de selección de jugadora en el contenedor principal */
+                      const ev = new CustomEvent("open-slot", { detail: { role: row.role, index: i } });
+                      window.dispatchEvent(ev);
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
           );
         })}
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -320,90 +264,85 @@ export default function App() {
   const [captainId, setCaptainId] = React.useState<number | null>(null);
   const [modal, setModal] = React.useState<{ role: Role; index: number } | null>(null);
 
-  // Modal de contacto (nombre/email)
-  const [contactOpen, setContactOpen] = React.useState(false);
-  const [participantName, setParticipantName] = React.useState("");
-  const [participantEmail, setParticipantEmail] = React.useState("");
-  const [botField, setBotField] = React.useState("");
+  React.useEffect(() => {
+    const handler = (e: any) => setModal(e.detail);
+    window.addEventListener("open-slot", handler as any);
+    return () => window.removeEventListener("open-slot", handler as any);
+  }, []);
 
-  const [sending, setSending] = React.useState(false);
-
-  const selected = new Set(Object.values(lineup).flat().filter(Boolean) as number[]);
-  const selectedIds = Array.from(selected);
-
+  // listado de opciones por rol
   const roleOptions = React.useMemo(
     () => ({
-      PT: PLAYERS.filter((p) => hasRole(p, "PT")),
-      DF: PLAYERS.filter((p) => hasRole(p, "DF")),
-      MC: PLAYERS.filter((p) => hasRole(p, "MC")),
-      DL: PLAYERS.filter((p) => hasRole(p, "DL")),
+      PT: PLAYERS.filter(p => hasRole(p, "PT")),
+      DF: PLAYERS.filter(p => hasRole(p, "DF")),
+      MC: PLAYERS.filter(p => hasRole(p, "MC")),
+      DL: PLAYERS.filter(p => hasRole(p, "DL")),
     }),
     []
   );
+  const selectedIds = new Set<number>(Object.values(lineup).flat().filter(Boolean) as number[]);
 
   function openSlot(role: Role, index: number) {
     setModal({ role, index });
   }
   function choosePlayer(id: number) {
-    setLineup((prev) => {
+    setLineup(prev => {
       const next: Record<Role, Array<number | null>> = { ...prev, [modal!.role]: [...prev[modal!.role]] } as any;
-      POS.forEach((r) => {
-        next[r] = next[r].map((x) => (x === id ? null : x));
+      // Evitar duplicados
+      POS.forEach(r => {
+        next[r] = next[r].map(x => (x === id ? null : x));
       });
       next[modal!.role][modal!.index] = id;
       return next;
     });
+    // si la jugadora cambiada era capitana, limpia capitana
+    setCaptainId(c => (c && !Object.values(lineup).flat().includes(c) ? null : c));
     setModal(null);
   }
   function clearSlot() {
-    setLineup((prev) => {
-      const idToClear = prev[modal!.role][modal!.index];
-      const arr = [...prev[modal!.role]];
-      arr[modal!.index] = null;
-      if (idToClear && idToClear === captainId) setCaptainId(null);
-      return { ...prev, [modal!.role]: arr };
+    if (!modal) return;
+    setLineup(prev => {
+      const arr = [...prev[modal.role]];
+      if (arr[modal.index] === captainId) setCaptainId(null);
+      arr[modal.index] = null;
+      return { ...prev, [modal.role]: arr };
     });
     setModal(null);
   }
 
-  const getRoleOf = React.useCallback(
-    (id: number): Role | null => {
-      for (const r of POS) if ((lineup[r] || []).includes(id)) return r;
-      return null;
-    },
-    [lineup]
-  );
-
-  // Si no hay jugadoras, limpia capitana
-  React.useEffect(() => {
-    const anySelected = Object.values(lineup).some((arr) => arr.some(Boolean));
-    if (!anySelected && captainId !== null) setCaptainId(null);
-  }, [lineup, captainId]);
-
-  // Filas del campo
+  // filas del campo (de arriba a abajo)
   const rows = React.useMemo(() => {
-    const displayOrder: Role[] = ["DL", "MC", "DF", "PT"].filter((r) => (counts as any)[r] > 0) as Role[];
-    return displayOrder.map((role) => ({
+    const order: Role[] = ["DL", "MC", "DF", "PT"].filter(r => (counts as any)[r] > 0) as Role[];
+    return order.map(role => ({
       role,
-      players: lineup[role].map((id, i) => ({
-        role,
-        player: id ? byId[id] : null,
-        isCaptain: id === captainId,
-        onClick: () => openSlot(role, i),
-      })),
+      players: lineup[role].map(id => ({ player: id ? byId[id] : null, isCaptain: id === captainId })),
     }));
   }, [counts, lineup, captainId]);
 
-  function handleClickEnviar() {
+  // Selector de capitana: chips con las 5 jugadoras elegidas (sin “C”)
+  const chosenPlayers: Array<{ id: number; role: Role; name: string }> = React.useMemo(() => {
+    const list: Array<{ id: number; role: Role; name: string }> = [];
+    (["PT", "DF", "MC", "DL"] as Role[]).forEach(r => {
+      lineup[r].forEach(id => {
+        if (id) list.push({ id, role: r, name: byId[id].name });
+      });
+    });
+    return list;
+  }, [lineup]);
+
+  // Envío (igual que tenías)
+  const [participantName, setParticipantName] = React.useState("");
+  const [participantEmail, setParticipantEmail] = React.useState("");
+  const [botField, setBotField] = React.useState("");
+  const [sending, setSending] = React.useState(false);
+
+  async function send() {
     const needed = (counts.PT + counts.DF + counts.MC + counts.DL) as number;
     const chosen = Object.values(lineup).flat().filter(Boolean).length;
     if (chosen !== needed) return alert("Completa todos los huecos.");
-    if (!captainId) return alert("Selecciona capitana en el apartado correspondiente.");
-    setContactOpen(true);
-  }
-
-  async function confirmAndSend() {
+    if (!captainId) return alert("Selecciona capitana.");
     if (!participantName || !participantEmail) return alert("Rellena nombre y tu email.");
+
     setSending(true);
     try {
       const res = await fetch("/api/submit", {
@@ -419,55 +358,58 @@ export default function App() {
         }),
       });
       if (!res.ok) throw new Error(await res.text());
-      setContactOpen(false);
       alert("✅ Equipo enviado. ¡Suerte!");
     } catch (e: any) {
-      alert("❌ No se pudo enviar: " + e.message);
+      alert("❌ No se pudo enviar: " + (e?.message || "Error"));
     } finally {
       setSending(false);
     }
   }
 
+  // UI
   return (
     <div style={{ minHeight: "100vh", background: "#eef2f7", color: "#111827" }}>
       <div style={{ maxWidth: 1040, margin: "0 auto", padding: 16 }}>
-        {/* Header + instrucciones */}
-        <header
+        {/* Header */}
+        <section
           style={{
             background: "#0f172a",
             color: "#fff",
-            borderRadius: 14,
-            padding: "14px 16px",
-            marginBottom: 10,
-            boxShadow: "0 2px 10px rgba(0,0,0,.05)",
+            borderRadius: 16,
+            padding: "18px 16px",
+            marginBottom: 14,
+            boxShadow: "0 6px 18px rgba(0,0,0,.12)",
           }}
         >
-          <h1
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, display: "flex", gap: 10, alignItems: "center" }}>
+            <span style={{ fontSize: 24 }}>⚽</span> Fantasy – Amigos del Duero
+          </h1>
+          <ul style={{ margin: "10px 0 0", paddingLeft: 20, lineHeight: 1.4 }}>
+            <li>Selecciona tu formación y escoge hasta 5 jugadoras.</li>
+            <li>
+              Selecciona una <strong>capitana</strong> (los puntos que haga se multiplicarán <strong>x2</strong>).
+            </li>
+          </ul>
+        </section>
+
+        {/* Formaciones */}
+        <section
+          style={{
+            background: "#fff",
+            border: "1px solid #e5e7eb",
+            borderRadius: 16,
+            padding: 16,
+            marginBottom: 16,
+          }}
+        >
+          <div
             style={{
-              fontSize: 22,
-              fontWeight: 900,
-              margin: 0,
-              letterSpacing: 0.2,
-              whiteSpace: "normal",
-              wordBreak: "keep-all",
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0,1fr))",
+              gap: 12,
             }}
           >
-            ⚽ Fantasy – Amigos del&nbsp;Duero
-          </h1>
-          <div style={{ marginTop: 8, fontSize: 13, color: "rgba(255,255,255,.85)" }}>
-            <div>• Selecciona tu formación y escoge hasta 5 jugadoras.</div>
-            <div>
-              • Selecciona una <strong>capitana</strong> (los puntos que haga se multiplicarán <strong>x2</strong>).
-            </div>
-          </div>
-        </header>
-
-        {/* Formación 3×3 */}
-        <section
-          style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}
-        >
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-            {FORMATIONS.map((f) => (
+            {FORMATIONS.map(f => (
               <Chip key={f} active={formation === f} onClick={() => setFormation(f)}>
                 {f}
               </Chip>
@@ -480,15 +422,89 @@ export default function App() {
           <Pitch rows={rows} />
         </section>
 
-        {/* Picker de capitana */}
-        <CaptainPicker
-          selectedIds={selectedIds}
-          getRoleOf={getRoleOf}
-          captainId={captainId}
-          setCaptainId={setCaptainId}
-        />
+        {/* Selector de CAPITANA (solo aparece cuando hay jugadoras elegidas) */}
+        {chosenPlayers.length > 0 && (
+          <section
+            style={{
+              background: "#fff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+                marginBottom: 10,
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Selecciona capitana</h3>
+              <div style={{ fontSize: 14, color: "#065f46" }}>
+                Capitana:{" "}
+                <strong>
+                  {captainId ? byId[captainId].name : <span style={{ opacity: 0.6 }}>— sin asignar —</span>}
+                </strong>
+              </div>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {chosenPlayers.map(p => {
+                const active = p.id === captainId;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setCaptainId(active ? null : p.id)}
+                    title={`Hacer capitana a ${p.name}`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "10px 12px",
+                      borderRadius: 999,
+                      border: active ? "2px solid #f59e0b" : "1px solid #e5e7eb",
+                      background: active ? "#fff7ed" : "#fff",
+                      cursor: "pointer",
+                      boxShadow: active ? "0 2px 8px rgba(245, 158, 11, .35)" : "0 1px 4px rgba(0,0,0,.05)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 999,
+                        background: POS_COLORS[p.role],
+                        color: "#fff",
+                        fontWeight: 900,
+                        fontSize: 12,
+                        lineHeight: "28px",
+                        textAlign: "center",
+                      }}
+                    >
+                      {p.role}
+                    </span>
+                    <span
+                      style={{
+                        maxWidth: 160,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        fontWeight: 800,
+                      }}
+                    >
+                      {p.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
-        {/* Botón enviar (modal para datos) */}
+        {/* Datos y envío */}
         <section
           style={{
             background: "#fff",
@@ -496,28 +512,70 @@ export default function App() {
             borderRadius: 16,
             padding: 16,
             marginBottom: 16,
-            display: "flex",
-            justifyContent: "center",
           }}
         >
-          <div style={{ width: "min(100%, 480px)" }}>
-            <button
-              onClick={handleClickEnviar}
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                background: "#111827",
-                color: "#fff",
-                border: 0,
-                borderRadius: 12,
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              Enviar selección
-            </button>
-            <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280", textAlign: "center" }}>
-              <em>Se enviará una copia del equipo que elijas al email indicado.</em>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 12,
+            }}
+          >
+            <div>
+              <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
+              <input
+                value={participantName}
+                onChange={e => setParticipantName(e.target.value)}
+                placeholder="Ej. Laura Pérez"
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  border: "1px solid #d1d5db",
+                  fontSize: 14,
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu email</label>
+              <input
+                type="email"
+                value={participantEmail}
+                onChange={e => setParticipantEmail(e.target.value)}
+                placeholder="tu@email.com"
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  border: "1px solid #d1d5db",
+                  fontSize: 14,
+                }}
+              />
+            </div>
+            <div style={{ display: "none" }} aria-hidden>
+              <label>Deja esto vacío</label>
+              <input value={botField} onChange={e => setBotField(e.target.value)} />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <button
+                onClick={send}
+                disabled={sending}
+                style={{
+                  width: "100%",
+                  padding: "12px 14px",
+                  background: sending ? "#6b7280" : "#111827",
+                  color: "#fff",
+                  border: 0,
+                  borderRadius: 12,
+                  fontWeight: 900,
+                  cursor: sending ? "not-allowed" : "pointer",
+                }}
+              >
+                {sending ? "Enviando..." : "Enviar selección"}
+              </button>
+              <div style={{ marginTop: 10, fontSize: 12, color: "#6b7280", textAlign: "center" }}>
+                Se enviará una copia del equipo que elijas al email indicado.
+              </div>
             </div>
           </div>
         </section>
@@ -532,13 +590,13 @@ export default function App() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              zIndex: 60,
+              zIndex: 50,
             }}
             onClick={() => setModal(null)}
           >
             <div
               style={{ width: "100%", maxWidth: 520, background: "#fff", borderRadius: 16, padding: 16 }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <strong>Selecciona {modal.role}</strong>
@@ -550,9 +608,9 @@ export default function App() {
                 </button>
               </div>
               <div style={{ display: "grid", gap: 8, maxHeight: "60vh", overflow: "auto" }}>
-                {PLAYERS.filter((p) => hasRole(p, modal.role))
-                  .filter((p) => !selected.has(p.id) || lineup[modal.role][modal.index] === p.id)
-                  .map((p) => (
+                {roleOptions[modal.role]
+                  .filter(p => !selectedIds.has(p.id) || lineup[modal.role][modal.index] === p.id)
+                  .map(p => (
                     <div
                       key={p.id}
                       style={{
@@ -564,9 +622,34 @@ export default function App() {
                         padding: 10,
                       }}
                     >
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                        <RoleDot role={modal.role} />
-                        <div style={{ fontSize: 14, fontWeight: 700 }}>{p.name}</div>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                        <span
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 999,
+                            background: POS_COLORS[modal.role],
+                            color: "#fff",
+                            fontWeight: 900,
+                            fontSize: 12,
+                            lineHeight: "28px",
+                            textAlign: "center",
+                            flex: "0 0 auto",
+                          }}
+                        >
+                          {modal.role}
+                        </span>
+                        <div
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 800,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {p.name}
+                        </div>
                       </div>
                       <button
                         onClick={() => choosePlayer(p.id)}
@@ -576,7 +659,7 @@ export default function App() {
                           color: "#065f46",
                           padding: "6px 10px",
                           borderRadius: 10,
-                          fontWeight: 700,
+                          fontWeight: 800,
                           cursor: "pointer",
                         }}
                       >
@@ -593,112 +676,6 @@ export default function App() {
                   Vaciar posición
                 </button>
                 <div style={{ fontSize: 12, color: "#6b7280" }}>Solo puedes alinear jugadoras del equipo.</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Modal de contacto (nombre/email) */}
-        {contactOpen && (
-          <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0,0,0,.45)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 70,
-            }}
-            onClick={() => setContactOpen(false)}
-          >
-            <div
-              style={{
-                width: "100%",
-                maxWidth: 520,
-                background: "#fff",
-                borderRadius: 16,
-                padding: 16,
-                boxShadow: "0 8px 30px rgba(0,0,0,.2)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ marginBottom: 8 }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>Datos de contacto</h3>
-                <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
-                  Te enviaremos una copia del equipo al email indicado.
-                </div>
-              </div>
-
-              <div style={{ display: "grid", gap: 12 }}>
-                <div>
-                  <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
-                  <input
-                    value={participantName}
-                    onChange={(e) => setParticipantName(e.target.value)}
-                    placeholder="Ej. Laura Pérez"
-                    style={{
-                      width: "100%",
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: "1px solid #d1d5db",
-                      height: 36,
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu email</label>
-                  <input
-                    type="email"
-                    value={participantEmail}
-                    onChange={(e) => setParticipantEmail(e.target.value)}
-                    placeholder="tu@email.com"
-                    style={{
-                      width: "100%",
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: "1px solid #d1d5db",
-                      height: 36,
-                    }}
-                  />
-                </div>
-
-                {/* Honeypot anti-bots */}
-                <div style={{ display: "none" }} aria-hidden>
-                  <label>Deja esto vacío</label>
-                  <input value={botField} onChange={(e) => setBotField(e.target.value)} />
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
-                <button
-                  onClick={() => setContactOpen(false)}
-                  style={{
-                    border: 0,
-                    background: "#f3f4f6",
-                    padding: "8px 12px",
-                    borderRadius: 10,
-                    cursor: "pointer",
-                    fontWeight: 700,
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={confirmAndSend}
-                  disabled={sending}
-                  style={{
-                    border: 0,
-                    background: sending ? "#6b7280" : "#111827",
-                    color: "#fff",
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    cursor: sending ? "not-allowed" : "pointer",
-                    fontWeight: 800,
-                  }}
-                >
-                  {sending ? "Enviando..." : "Confirmar y enviar"}
-                </button>
               </div>
             </div>
           </div>
