@@ -143,7 +143,6 @@ type Slot = {
   player: Player | null;
   isCaptain?: boolean;
   onClick?: () => void;
-  onCaptain?: () => void;
 };
 
 function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
@@ -170,10 +169,9 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
               <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
                 {row.players.map((slot, i) => {
                   const border = slot.player
-                    ? slot.isCaptain
-                      ? "2px solid #f59e0b" // dorado para capitana
-                      : `2px solid ${POS_COLORS[slot.role]}`
+                    ? `2px solid ${POS_COLORS[slot.role]}`
                     : "2px dashed rgba(255,255,255,.7)";
+                  const bg = slot.isCaptain ? "#fde68a" : slot.player ? "#fff" : "rgba(255,255,255,.08)";
                   return (
                     <button
                       key={i}
@@ -184,12 +182,12 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                         minHeight: 104,
                         borderRadius: 16,
                         border,
-                        background: slot.player ? "#fff" : "rgba(255,255,255,.08)",
+                        background: bg,
                         color: slot.player ? "#111827" : "#fff",
                         padding: 12,
                         cursor: "pointer",
                         boxShadow: slot.isCaptain
-                          ? "0 2px 10px rgba(245,158,11,.35)" // glow dorado
+                          ? "0 2px 10px rgba(245,158,11,.35)"
                           : slot.player
                           ? "0 2px 6px rgba(0,0,0,.08)"
                           : "none",
@@ -198,44 +196,12 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                     >
                       {slot.player ? (
                         <>
-                          {/* Badge rol arriba-izquierda (ligeramente sobresalido) */}
-                          <div
-                            style={{
-                              position: "absolute",
-                              top: -12,
-                              left: -12,
-                            }}
-                          >
+                          {/* Badge rol arriba-izq (sobresale) */}
+                          <div style={{ position: "absolute", top: -12, left: -12 }}>
                             <RoleDot role={slot.role} />
                           </div>
 
-                          {/* Botón C arriba-derecha (ligeramente sobresalido) */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              slot.onCaptain && slot.onCaptain();
-                            }}
-                            title={slot.isCaptain ? "Quitar capitana" : "Marcar como capitana"}
-                            style={{
-                              position: "absolute",
-                              top: -12,
-                              right: -12,
-                              width: 28,
-                              height: 28,
-                              borderRadius: 999,
-                              border: slot.isCaptain ? "2px solid #f59e0b" : "1px solid #e5e7eb",
-                              background: slot.isCaptain ? "#fde68a" : "#fff",
-                              color: "#92400e",
-                              fontSize: 12,
-                              fontWeight: 900,
-                              cursor: "pointer",
-                              boxShadow: "0 1px 3px rgba(0,0,0,.15)",
-                            }}
-                          >
-                            C
-                          </button>
-
-                          {/* Nombre centrado y con ancho libre */}
+                          {/* Nombre centrado */}
                           <div
                             style={{
                               height: "100%",
@@ -275,6 +241,75 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
   );
 }
 
+/** ===== Picker de Capitana ===== */
+function CaptainPicker({
+  selectedIds,
+  getRoleOf,
+  captainId,
+  setCaptainId,
+}: {
+  selectedIds: number[];
+  getRoleOf: (id: number) => Role | null;
+  captainId: number | null;
+  setCaptainId: (id: number) => void;
+}) {
+  if (selectedIds.length === 0) return null;
+  return (
+    <section
+      style={{
+        background: "#fff",
+        border: "1px solid #e5e7eb",
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <strong style={{ fontSize: 14 }}>Selecciona capitana</strong>
+        {captainId ? <span style={{ fontSize: 12, color: "#065f46" }}>Capitana: {byId[captainId].name}</span> : null}
+      </div>
+
+      <div
+        role="radiogroup"
+        style={{
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+        }}
+      >
+        {selectedIds.map((id) => {
+          const role = getRoleOf(id) || "DL";
+          const active = id === captainId;
+          return (
+            <button
+              key={id}
+              role="radio"
+              aria-checked={active}
+              onClick={() => setCaptainId(id)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 10px",
+                borderRadius: 999,
+                border: active ? "2px solid #f59e0b" : "1px solid #e5e7eb",
+                background: active ? "#fde68a" : "#fff",
+                fontWeight: 800,
+                cursor: "pointer",
+                boxShadow: active ? "0 2px 8px rgba(245,158,11,.25)" : "none",
+              }}
+              title={`Hacer capitana a ${byId[id].name}`}
+            >
+              <RoleDot role={role} size={22} />
+              <span style={{ fontSize: 13 }}>{byId[id].name}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
   const [formation, setFormation] = React.useState<typeof FORMATIONS[number]>("1-1-1-2");
   const { lineup, setLineup, counts } = useLineup(formation);
@@ -282,6 +317,8 @@ export default function App() {
   const [modal, setModal] = React.useState<{ role: Role; index: number } | null>(null);
 
   const selected = new Set(Object.values(lineup).flat().filter(Boolean) as number[]);
+  const selectedIds = Array.from(selected);
+
   const roleOptions = React.useMemo(
     () => ({
       PT: PLAYERS.filter((p) => hasRole(p, "PT")),
@@ -312,8 +349,19 @@ export default function App() {
       arr[modal!.index] = null;
       return { ...prev, [modal!.role]: arr };
     });
+    // si quitamos la capitana, reseteamos
+    setCaptainId((c) => (c && !selected.has(c) ? null : c));
     setModal(null);
   }
+
+  // Rol actual de un id (según dónde esté colocado)
+  const getRoleOf = React.useCallback(
+    (id: number): Role | null => {
+      for (const r of POS) if ((lineup[r] || []).includes(id)) return r;
+      return null;
+    },
+    [lineup]
+  );
 
   // Filas del campo (de arriba a abajo: DL, MC, DF, PT)
   const rows = React.useMemo(() => {
@@ -325,15 +373,11 @@ export default function App() {
         player: id ? byId[id] : null,
         isCaptain: id === captainId,
         onClick: () => openSlot(role, i),
-        onCaptain: () => {
-          if (!id) return;
-          setCaptainId((c) => (c === id ? null : id));
-        },
       })),
     }));
   }, [counts, lineup, captainId]);
 
-  // Envío por email
+  // Envío por email (via API)
   const [participantName, setParticipantName] = React.useState("");
   const [participantEmail, setParticipantEmail] = React.useState("");
   const [botField, setBotField] = React.useState("");
@@ -343,7 +387,7 @@ export default function App() {
     const needed = (counts.PT + counts.DF + counts.MC + counts.DL) as number;
     const chosen = Object.values(lineup).flat().filter(Boolean).length;
     if (chosen !== needed) return alert("Completa todos los huecos.");
-    if (!captainId) return alert("Selecciona capitana (botón 'C').");
+    if (!captainId) return alert("Selecciona capitana en el apartado correspondiente.");
     if (!participantName || !participantEmail) return alert("Rellena nombre y tu email.");
 
     setSending(true);
@@ -383,8 +427,17 @@ export default function App() {
             boxShadow: "0 2px 10px rgba(0,0,0,.05)",
           }}
         >
-          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0, letterSpacing: 0.2 }}>
-            ⚽ Fantasy – Amigos del Duero
+          <h1
+            style={{
+              fontSize: 22,
+              fontWeight: 900,
+              margin: 0,
+              letterSpacing: 0.2,
+              whiteSpace: "normal",
+              wordBreak: "keep-all",
+            }}
+          >
+            ⚽ Fantasy – Amigos del&nbsp;Duero
           </h1>
           <div style={{ marginTop: 8, fontSize: 13, color: "rgba(255,255,255,.85)" }}>
             <div>• Selecciona tu formación y escoge hasta 5 jugadoras.</div>
@@ -412,6 +465,14 @@ export default function App() {
           <Pitch rows={rows} />
         </section>
 
+        {/* Picker de capitana */}
+        <CaptainPicker
+          selectedIds={selectedIds}
+          getRoleOf={getRoleOf}
+          captainId={captainId}
+          setCaptainId={setCaptainId}
+        />
+
         {/* Datos y envío */}
         <section
           style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 16 }}
@@ -420,12 +481,12 @@ export default function App() {
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-              gap: 14,
+              gap: 12,
               alignItems: "end",
               justifyItems: "center",
             }}
           >
-            <div style={{ width: "100%", maxWidth: 560 }}>
+            <div style={{ width: "min(100%, 480px)" }}>
               <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
               <input
                 value={participantName}
@@ -433,14 +494,14 @@ export default function App() {
                 placeholder="Ej. Laura Pérez"
                 style={{
                   width: "100%",
-                  padding: "8px 10px",
+                  padding: "7px 10px",
                   borderRadius: 10,
                   border: "1px solid #d1d5db",
-                  height: 36, // un poco más pequeño
+                  height: 34,
                 }}
               />
             </div>
-            <div style={{ width: "100%", maxWidth: 560 }}>
+            <div style={{ width: "min(100%, 480px)" }}>
               <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu email</label>
               <input
                 type="email"
@@ -449,10 +510,10 @@ export default function App() {
                 placeholder="tu@email.com"
                 style={{
                   width: "100%",
-                  padding: "8px 10px",
+                  padding: "7px 10px",
                   borderRadius: 10,
                   border: "1px solid #d1d5db",
-                  height: 36,
+                  height: 34,
                 }}
               />
             </div>
@@ -463,7 +524,7 @@ export default function App() {
               <input value={botField} onChange={(e) => setBotField(e.target.value)} />
             </div>
 
-            <div style={{ gridColumn: "1 / -1", width: "100%", maxWidth: 560 }}>
+            <div style={{ gridColumn: "1 / -1", width: "min(100%, 480px)" }}>
               <button
                 onClick={send}
                 disabled={sending}
