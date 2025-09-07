@@ -1,15 +1,12 @@
 import React from "react";
 
-// ===== App simple con selección en CAMPO (Next.js + TS) =====
-// - Selección libre por posición (PT/DF/MC/DL)
-// - Capitana se elige en un módulo aparte (chips), sin “C” en el campo
-// - Modal flotante para nombre/email al enviar
-// - Envío por email a backend /api/submit
+/** ===== App Fantasy – Amigos del Duero (Next.js + TS) ===== */
 
 type Role = "PT" | "DF" | "MC" | "DL";
+
 const POS: Role[] = ["PT", "DF", "MC", "DL"];
 const POS_COLORS: Record<Role, string> = {
-  PT: "#f59e0b", // amarillo
+  PT: "#f59e0b", // ámbar
   DF: "#3b82f6", // azul
   MC: "#10b981", // verde
   DL: "#ef4444", // rojo
@@ -54,198 +51,13 @@ function formationToCounts(f: typeof FORMATIONS[number]) {
   return { PT: pt || 0, DF: df || 0, MC: mc || 0, DL: dl || 0 };
 }
 
-// ==== modal elegante ====
-function Modal({
-  open,
-  onClose,
-  children,
-}: {
-  open: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  if (!open) return null;
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,.55)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 12,
-        zIndex: 100,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "min(560px, 92vw)",
-          borderRadius: 16,
-          background: "#fff",
-          border: "1px solid #e5e7eb",
-          boxShadow: "0 12px 32px rgba(0,0,0,.25)",
-          padding: 16,
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function Chip({
-  children,
-  active,
-  onClick,
-}: {
-  children: React.ReactNode;
-  active?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      title={String(children)}
-      style={{
-        padding: "10px 14px",
-        borderRadius: 999,
-        border: active ? "1px solid #0f172a" : "1px solid #e5e7eb",
-        background: active ? "#0f172a" : "#fff",
-        color: active ? "#fff" : "#0f172a",
-        fontWeight: 800,
-        cursor: "pointer",
-        boxShadow: active ? "0 2px 8px rgba(0,0,0,.15)" : "none",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function RoleBadge({ role, size = 30 }: { role: Role; size?: number }) {
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: size,
-        height: size,
-        borderRadius: 999,
-        background: POS_COLORS[role],
-        color: "#fff",
-        fontSize: Math.max(11, Math.round(size * 0.42)),
-        fontWeight: 900,
-        boxShadow: "0 1px 2px rgba(0,0,0,.15)",
-      }}
-    >
-      {role}
-    </span>
-  );
-}
-
-type Slot = {
-  role: Role;
-  player: Player | null;
-  onClick?: () => void;
-};
-
-function Pitch({
-  rows,
-}: {
-  rows: Array<{ role: Role; players: Slot[] }>;
-}) {
-  return (
-    <div
-      style={{
-        width: "100%",
-        borderRadius: 24,
-        padding: 16,
-        background: "linear-gradient(142deg,#157347,#0b5e3f)",
-        position: "relative",
-        overflow: "hidden",
-        boxShadow: "inset 0 2px 8px rgba(0,0,0,.35)",
-      }}
-    >
-      {/* líneas del campo */}
-      <div style={{ position: "absolute", inset: 8, border: "2px solid rgba(255,255,255,.35)", borderRadius: 20 }} />
-      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
-        {rows.map((row, idx) => {
-          const n = row.players.length || 1;
-          const colWidth = Math.max(20, Math.floor(100 / n) - 2);
-          return (
-            <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12, padding: "0 6px" }}>
-              {row.players.map((slot, i) => {
-                const nameFont = n >= 3 ? 15 : 17; // ✅ más pequeño con 3 en la línea
-                return (
-                  <button
-                    key={i}
-                    onClick={slot.onClick}
-                    style={{
-                      width: `${colWidth}%`,
-                      maxWidth: 240,
-                      minHeight: 96,
-                      borderRadius: 16,
-                      border: slot.player ? `2px solid ${POS_COLORS[slot.role]}` : "2px dashed rgba(255,255,255,.8)",
-                      background: slot.player ? "#fff" : "rgba(255,255,255,.08)",
-                      color: slot.player ? "#0f172a" : "#fff",
-                      padding: 10,
-                      cursor: "pointer",
-                      position: "relative",
-                      boxShadow: slot.player ? "0 2px 6px rgba(0,0,0,.10)" : "none",
-                    }}
-                  >
-                    {slot.player ? (
-                      <>
-                        {/* badge solapado arriba-izq */}
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: -14,
-                            left: -14,
-                          }}
-                        >
-                          <RoleBadge role={slot.role} size={34} />
-                        </div>
-                        <div
-                          style={{
-                            fontSize: nameFont,
-                            fontWeight: 800,
-                            lineHeight: 1.1,
-                            textAlign: "center",
-                            whiteSpace: "nowrap",          // ⛔️ no partir
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",       // … si no cabe
-                            marginTop: 6,
-                            padding: "8px 8px",
-                          }}
-                        >
-                          {slot.player.name}
-                        </div>
-                      </>
-                    ) : (
-                      <div style={{ textAlign: "center", fontWeight: 800, opacity: 0.9 }}>Añadir</div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function useLineup(formation: typeof FORMATIONS[number]) {
   const counts = React.useMemo(() => formationToCounts(formation), [formation]);
   const makeEmpty = React.useMemo(
     () => (r: Role) => Array.from({ length: counts[r] as number }, () => null as number | null),
     [counts]
   );
+
   const [lineup, setLineup] = React.useState<Record<Role, Array<number | null>>>({
     PT: makeEmpty("PT"),
     DF: makeEmpty("DF"),
@@ -272,20 +84,263 @@ function useLineup(formation: typeof FORMATIONS[number]) {
   return { lineup, setLineup, counts };
 }
 
+/** ===== Chips (selector de formación) ===== */
+function Chip({
+  children,
+  active,
+  onClick,
+}: {
+  children: React.ReactNode;
+  active?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={String(children)}
+      style={{
+        padding: "12px 12px",
+        borderRadius: 12,
+        border: active ? "1px solid #0f172a" : "1px solid #e5e7eb",
+        background: active ? "#0f172a" : "#fff",
+        color: active ? "#fff" : "#111827",
+        fontWeight: 900,
+        cursor: "pointer",
+        width: "100%",
+        boxShadow: active ? "0 4px 14px rgba(15,23,42,.25)" : "none",
+        transition: "all .15s ease",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function RoleDot({ role, size = 26 }: { role: Role; size?: number }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: size,
+        height: size,
+        borderRadius: 999,
+        background: POS_COLORS[role],
+        color: "#fff",
+        fontSize: size < 26 ? 11 : 12,
+        fontWeight: 900,
+        pointerEvents: "none",
+      }}
+    >
+      {role}
+    </span>
+  );
+}
+
+type Slot = {
+  role: Role;
+  player: Player | null;
+  isCaptain?: boolean;
+  onClick?: () => void;
+};
+
+function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "center" }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 760,
+          borderRadius: 24,
+          padding: 16,
+          background: "linear-gradient(135deg,#15803d,#065f46)",
+          position: "relative",
+          overflow: "hidden",
+          boxShadow: "inset 0 2px 8px rgba(0,0,0,.35)",
+        }}
+      >
+        <div style={{ position: "absolute", inset: 8, border: "2px solid rgba(255,255,255,.35)", borderRadius: 20 }} />
+        <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
+          {rows.map((row, idx) => {
+            const n = row.players.length || 1; // <-- nº de jugadoras en la fila
+            const colWidth = Math.max(24, Math.floor(100 / n) - 2);
+            return (
+              <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+                {row.players.map((slot, i) => {
+                  const hasPlayer = !!slot.player;
+                  return (
+                    <button
+                      key={i}
+                      onClick={slot.onClick}
+                      style={{
+                        width: `${colWidth}%`,
+                        maxWidth: 220,
+                        minHeight: 104,
+                        borderRadius: 16,
+                        border: hasPlayer ? `2px solid ${POS_COLORS[slot.role]}` : "2px dashed rgba(255,255,255,.7)",
+                        background: hasPlayer ? "#fff" : "rgba(255,255,255,.10)",
+                        color: hasPlayer ? "#111827" : "#fff",
+                        padding: 12,
+                        cursor: "pointer",
+                        boxShadow: hasPlayer ? "0 2px 6px rgba(0,0,0,.08)" : "none",
+                        position: "relative",
+                      }}
+                    >
+                      {hasPlayer ? (
+                        <>
+                          {/* Badge rol arriba-izq (sobresale) */}
+                          <div style={{ position: "absolute", top: -12, left: -12 }}>
+                            <RoleDot role={slot.role} />
+                          </div>
+
+                          {/* Nombre centrado con ellipsis si no cabe; fuente un poco menor si hay 3 en la fila */}
+                          <div
+                            style={{
+                              height: "100%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              textAlign: "center",
+                              padding: "0 8px",
+                              width: "100%",
+                            }}
+                          >
+                            <span
+                              title={slot.player!.name}
+                              style={{
+                                display: "block",
+                                width: "100%",
+                                fontSize: n === 3 ? 15 : 16,
+                                fontWeight: 800,
+                                lineHeight: 1.25,
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                color: "#111827", // <-- nunca se pinta dorado
+                              }}
+                            >
+                              {slot.player!.name}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ textAlign: "center", fontWeight: 700, opacity: 0.95 }}>Añadir</div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** ===== Picker de Capitana ===== */
+function CaptainPicker({
+  selectedIds,
+  getRoleOf,
+  captainId,
+  setCaptainId,
+}: {
+  selectedIds: number[];
+  getRoleOf: (id: number) => Role | null;
+  captainId: number | null;
+  setCaptainId: (id: number) => void;
+}) {
+  // Cabecera común con subtítulo
+  const Header = (
+    <div style={{ marginBottom: 10 }}>
+      <strong style={{ fontSize: 14 }}>Selecciona capitana</strong>
+      <div style={{ fontSize: 12, color: "#6b7280" }}>(los puntos de la capitana se multiplican x2)</div>
+    </div>
+  );
+
+  // Estado vacío: mostrar tarjeta aunque no haya jugadoras
+  if (selectedIds.length === 0) {
+    return (
+      <section
+        style={{
+          background: "#fff",
+          border: "1px solid #e5e7eb",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 16,
+        }}
+      >
+        {Header}
+        <div style={{ fontSize: 13, color: "#6b7280" }}>Aún no has elegido jugadoras.</div>
+      </section>
+    );
+  }
+
+  // Con jugadoras: chips seleccionables
+  return (
+    <section
+      style={{
+        background: "#fff",
+        border: "1px solid #e5e7eb",
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+      }}
+    >
+      {Header}
+
+      <div role="radiogroup" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {selectedIds.map((id) => {
+          const role = getRoleOf(id) || "DL";
+          const active = id === captainId;
+          return (
+            <button
+              key={id}
+              role="radio"
+              aria-checked={active}
+              onClick={() => setCaptainId(id)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 10px",
+                borderRadius: 999,
+                border: active ? "2px solid #f59e0b" : "1px solid #e5e7eb",
+                background: "#fff",
+                fontWeight: 800,
+                cursor: "pointer",
+                boxShadow: active ? "0 0 0 3px rgba(245,158,11,.25)" : "none",
+              }}
+              title={`Hacer capitana a ${byId[id].name}`}
+            >
+              <RoleDot role={role} size={22} />
+              <span style={{ fontSize: 13 }}>{byId[id].name}</span>
+              {/* sin "C" adicional */}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
   const [formation, setFormation] = React.useState<typeof FORMATIONS[number]>("1-1-1-2");
   const { lineup, setLineup, counts } = useLineup(formation);
   const [captainId, setCaptainId] = React.useState<number | null>(null);
   const [modal, setModal] = React.useState<{ role: Role; index: number } | null>(null);
 
-  // modal de envío
-  const [askInfoOpen, setAskInfoOpen] = React.useState(false);
+  // Modal de contacto (nombre/email)
+  const [contactOpen, setContactOpen] = React.useState(false);
   const [participantName, setParticipantName] = React.useState("");
   const [participantEmail, setParticipantEmail] = React.useState("");
-  const [botField, setBotField] = React.useState(""); // honeypot
+  const [botField, setBotField] = React.useState("");
+
   const [sending, setSending] = React.useState(false);
 
-  const selectedIds = new Set(Object.values(lineup).flat().filter(Boolean) as number[]);
+  const selected = new Set(Object.values(lineup).flat().filter(Boolean) as number[]);
+  const selectedIds = Array.from(selected);
 
   const roleOptions = React.useMemo(
     () => ({
@@ -302,13 +357,7 @@ export default function App() {
   }
   function choosePlayer(id: number) {
     setLineup((prev) => {
-      const next: Record<Role, Array<number | null>> = {
-        PT: [...prev.PT],
-        DF: [...prev.DF],
-        MC: [...prev.MC],
-        DL: [...prev.DL],
-      };
-      // Evitar duplicados: quitarlo de cualquier otro sitio
+      const next: Record<Role, Array<number | null>> = { ...prev, [modal!.role]: [...prev[modal!.role]] } as any;
       POS.forEach((r) => {
         next[r] = next[r].map((x) => (x === id ? null : x));
       });
@@ -319,14 +368,30 @@ export default function App() {
   }
   function clearSlot() {
     setLineup((prev) => {
+      const idToClear = prev[modal!.role][modal!.index];
       const arr = [...prev[modal!.role]];
       arr[modal!.index] = null;
+      if (idToClear && idToClear === captainId) setCaptainId(null);
       return { ...prev, [modal!.role]: arr };
     });
     setModal(null);
   }
 
-  // Construir filas para el campo (arriba->abajo: DL, MC, DF, PT)
+  const getRoleOf = React.useCallback(
+    (id: number): Role | null => {
+      for (const r of POS) if ((lineup[r] || []).includes(id)) return r;
+      return null;
+    },
+    [lineup]
+  );
+
+  // Si no hay jugadoras, limpia capitana
+  React.useEffect(() => {
+    const anySelected = Object.values(lineup).some((arr) => arr.some(Boolean));
+    if (!anySelected && captainId !== null) setCaptainId(null);
+  }, [lineup, captainId]);
+
+  // Filas del campo
   const rows = React.useMemo(() => {
     const displayOrder: Role[] = ["DL", "MC", "DF", "PT"].filter((r) => (counts as any)[r] > 0) as Role[];
     return displayOrder.map((role) => ({
@@ -334,18 +399,22 @@ export default function App() {
       players: lineup[role].map((id, i) => ({
         role,
         player: id ? byId[id] : null,
+        isCaptain: id === captainId,
         onClick: () => openSlot(role, i),
       })),
     }));
-  }, [counts, lineup]);
+  }, [counts, lineup, captainId]);
 
-  // chips de capitana con las 5 seleccionadas
-  const chosenPlayers: Player[] = React.useMemo(() => {
-    const ids = (Object.values(lineup).flat().filter(Boolean) as number[]).map((id) => id!);
-    return ids.map((id) => byId[id]);
-  }, [lineup]);
+  function handleClickEnviar() {
+    const needed = (counts.PT + counts.DF + counts.MC + counts.DL) as number;
+    const chosen = Object.values(lineup).flat().filter(Boolean).length;
+    if (chosen !== needed) return alert("Completa todos los huecos.");
+    if (!captainId) return alert("Selecciona capitana en el apartado correspondiente.");
+    setContactOpen(true);
+  }
 
-  async function send() {
+  async function confirmAndSend() {
+    if (!participantName || !participantEmail) return alert("Rellena nombre y tu email.");
     setSending(true);
     try {
       const res = await fetch("/api/submit", {
@@ -361,62 +430,48 @@ export default function App() {
         }),
       });
       if (!res.ok) throw new Error(await res.text());
+      setContactOpen(false);
       alert("✅ Equipo enviado. ¡Suerte!");
-      setAskInfoOpen(false);
     } catch (e: any) {
-      alert("❌ No se pudo enviar: " + (e?.message || "Error"));
+      alert("❌ No se pudo enviar: " + e.message);
     } finally {
       setSending(false);
     }
   }
 
-  function beginSend() {
-    const needed = (counts.PT + counts.DF + counts.MC + counts.DL) as number;
-    const chosen = Object.values(lineup).flat().filter(Boolean).length;
-    if (chosen !== needed) return alert("Completa todos los huecos.");
-    if (!captainId) return alert("Selecciona capitana en el apartado inferior.");
-    setAskInfoOpen(true);
-  }
-
-  const TITLE = "Fantasy – Amigos del Duero";
-
   return (
-    <div style={{ minHeight: "100vh", background: "#f3f4f6", color: "#0f172a" }}>
-      <div style={{ maxWidth: 1120, margin: "0 auto", padding: 16 }}>
-        {/* Título */}
+    <div style={{ minHeight: "100vh", background: "#eef2f7", color: "#111827" }}>
+      <div style={{ maxWidth: 1040, margin: "0 auto", padding: 16 }}>
+        {/* Header (solo título) */}
         <header
           style={{
             background: "#0f172a",
             color: "#fff",
-            borderRadius: 16,
-            padding: "14px 18px",
-            marginBottom: 14,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
+            borderRadius: 14,
+            padding: "14px 16px",
+            marginBottom: 10,
+            boxShadow: "0 2px 10px rgba(0,0,0,.05)",
           }}
         >
-          <span style={{ fontSize: 22, lineHeight: 1 }}>⚽</span>
-          <h1 style={{ fontSize: 26, fontWeight: 900, margin: 0 }}>{TITLE}</h1>
-        </header>
-
-        {/* Selector de formación (3x3) */}
-        <section
-          style={{
-            background: "#fff",
-            border: "1px solid #e5e7eb",
-            borderRadius: 16,
-            padding: 16,
-            marginBottom: 8,
-          }}
-        >
-          <div
+          <h1
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3,minmax(0,1fr))",
-              gap: 12,
+              fontSize: 22,
+              fontWeight: 900,
+              margin: 0,
+              letterSpacing: 0.2,
+              whiteSpace: "normal",
+              wordBreak: "keep-all",
             }}
           >
+            ⚽ Fantasy – Amigos del&nbsp;Duero
+          </h1>
+        </header>
+
+        {/* Formación 3×3 */}
+        <section
+          style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 8 }}
+        >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
             {FORMATIONS.map((f) => (
               <Chip key={f} active={formation === f} onClick={() => setFormation(f)}>
                 {f}
@@ -425,205 +480,107 @@ export default function App() {
           </div>
         </section>
 
-        {/* Subtítulo centrado */}
-        <div style={{ textAlign: "center", color: "#6b7280", fontSize: 14, marginBottom: 10 }}>
+        {/* Subtítulo centrado entre formaciones y campo */}
+        <div style={{ textAlign: "center", fontSize: 13, color: "#6b7280", margin: "8px 0 12px" }}>
           Selecciona tu formación y escoge hasta 5 jugadoras.
         </div>
 
-        {/* CAMPO – perfectamente centrado */}
-        <section style={{ margin: "0 auto 16px", display: "flex", justifyContent: "center" }}>
-          <div style={{ width: "100%", maxWidth: 980 }}>
-            <Pitch rows={rows} />
-          </div>
+        {/* Campo */}
+        <section style={{ marginBottom: 16 }}>
+          <Pitch rows={rows} />
         </section>
 
-        {/* Seleccionar capitana */}
+        {/* Picker de capitana */}
+        <CaptainPicker selectedIds={selectedIds} getRoleOf={getRoleOf} captainId={captainId} setCaptainId={setCaptainId} />
+
+        {/* Botón enviar (abre modal de datos) */}
         <section
           style={{
             background: "#fff",
             border: "1px solid #e5e7eb",
             borderRadius: 16,
             padding: 16,
-            marginBottom: 14,
+            marginBottom: 16,
+            display: "flex",
+            justifyContent: "center",
           }}
         >
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
-            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>Selecciona capitana</h2>
-          </div>
-          <div style={{ marginTop: 2, color: "#6b7280", fontSize: 13 }}>
-            (los puntos de la capitana se multiplican x2)
-          </div>
-
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
-            {chosenPlayers.length === 0 && (
-              <div style={{ color: "#6b7280", fontSize: 14 }}>Aún no has elegido jugadoras.</div>
-            )}
-            {chosenPlayers.map((p) => {
-              // No “C” aquí. Resaltado con borde dorado si es la capitana.
-              const isCap = captainId === p.id;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => setCaptainId(isCap ? null : p.id)}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "8px 12px",
-                    borderRadius: 999,
-                    border: isCap ? "2px solid #f59e0b" : "1px solid #e5e7eb",
-                    background: "#fff",
-                    boxShadow: isCap ? "0 0 0 3px rgba(245,158,11,.25)" : "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  <RoleBadge role={(p.roles && p.roles[0]) || "DL"} size={28} />
-                  <span style={{ fontWeight: 800, fontSize: 14 }}>{p.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Botón enviar (sin inputs fijos; se pide en modal) */}
-        <section
-          style={{
-            background: "#fff",
-            border: "1px solid #e5e7eb",
-            borderRadius: 16,
-            padding: 16,
-            marginBottom: 24,
-          }}
-        >
-          {/* Honeypot oculto */}
-          <div style={{ display: "none" }}>
-            <input aria-hidden value={botField} onChange={(e) => setBotField(e.target.value)} />
-          </div>
-
-          <button
-            onClick={beginSend}
-            disabled={sending}
-            style={{
-              width: "100%",
-              padding: "12px 14px",
-              background: sending ? "#6b7280" : "#0f172a",
-              color: "#fff",
-              border: 0,
-              borderRadius: 12,
-              fontWeight: 900,
-              cursor: sending ? "not-allowed" : "pointer",
-            }}
-          >
-            {sending ? "Enviando..." : "Enviar selección"}
-          </button>
-        </section>
-
-        {/* Modal de confirmación de datos */}
-        <Modal open={askInfoOpen} onClose={() => setAskInfoOpen(false)}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-            <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>Datos para el envío</h3>
+          <div style={{ width: "min(100%, 480px)" }}>
             <button
-              onClick={() => setAskInfoOpen(false)}
+              onClick={handleClickEnviar}
               style={{
-                border: "1px solid #e5e7eb",
-                background: "#f3f4f6",
-                borderRadius: 10,
-                padding: "6px 10px",
-                cursor: "pointer",
-              }}
-            >
-              Cerrar
-            </button>
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr",
-              gap: 10,
-            }}
-          >
-            <div>
-              <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu nombre</label>
-              <input
-                value={participantName}
-                onChange={(e) => setParticipantName(e.target.value)}
-                placeholder="Ej. Laura Pérez"
-                style={{
-                  width: "100%",                 // ✅ caben dentro del modal
-                  maxWidth: "520px",
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid #d1d5db",
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 13, marginBottom: 6 }}>Tu email</label>
-              <input
-                type="email"
-                value={participantEmail}
-                onChange={(e) => setParticipantEmail(e.target.value)}
-                placeholder="tu@email.com"
-                style={{
-                  width: "100%",                 // ✅ caben dentro del modal
-                  maxWidth: "520px",
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid #d1d5db",
-                }}
-              />
-            </div>
-
-            <button
-              onClick={send}
-              disabled={sending}
-              style={{
-                width: "min(520px, 100%)",
+                width: "100%",
                 padding: "12px 14px",
-                background: sending ? "#6b7280" : "#0f172a",
+                background: "#111827",
                 color: "#fff",
                 border: 0,
                 borderRadius: 12,
-                fontWeight: 900,
-                cursor: sending ? "not-allowed" : "pointer",
-                marginTop: 2,
+                fontWeight: 800,
+                cursor: "pointer",
               }}
             >
-              {sending ? "Enviando..." : "Confirmar y enviar"}
+              Enviar selección
             </button>
-
-            <div style={{ fontSize: 12, color: "#6b7280" }}>
-              Se enviará una copia del equipo que elijas al email indicado.
-            </div>
           </div>
-        </Modal>
+        </section>
 
         {/* Modal selección de jugadora */}
         {modal && (
           <div
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 90 }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 60,
+            }}
             onClick={() => setModal(null)}
           >
-            <div style={{ width: "100%", maxWidth: 520, background: "#fff", borderRadius: 16, padding: 16 }} onClick={(e) => e.stopPropagation()}>
+            <div
+              style={{ width: "100%", maxWidth: 520, background: "#fff", borderRadius: 16, padding: 16 }}
+              onClick={(e) => e.stopPropagation()}
+            >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <strong>Selecciona {modal.role}</strong>
-                <button onClick={() => setModal(null)} style={{ border: 0, background: "#f3f4f6", padding: "6px 10px", borderRadius: 8, cursor: "pointer" }}>
+                <button
+                  onClick={() => setModal(null)}
+                  style={{ border: 0, background: "#f3f4f6", padding: "6px 10px", borderRadius: 8, cursor: "pointer" }}
+                >
                   Cerrar
                 </button>
               </div>
-              <div style={{ display: "grid", gap: 8, maxHeight: "58vh", overflow: "auto" }}>
-                {roleOptions[modal.role]
-                  .filter((p) => !selectedIds.has(p.id) || lineup[modal.role][modal.index] === p.id)
+              <div style={{ display: "grid", gap: 8, maxHeight: "60vh", overflow: "auto" }}>
+                {PLAYERS.filter((p) => hasRole(p, modal.role))
+                  .filter((p) => !selected.has(p.id) || lineup[modal.role][modal.index] === p.id)
                   .map((p) => (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #e5e7eb", borderRadius: 12, padding: 10 }}>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-                        <RoleBadge role={modal.role} />
-                        <div style={{ fontSize: 14, fontWeight: 800 }}>{p.name}</div>
+                    <div
+                      key={p.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 12,
+                        padding: 10,
+                      }}
+                    >
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <RoleDot role={modal.role} />
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{p.name}</div>
                       </div>
                       <button
                         onClick={() => choosePlayer(p.id)}
-                        style={{ border: "1px solid #10b981", background: "#ecfdf5", color: "#065f46", padding: "6px 10px", borderRadius: 10, fontWeight: 800, cursor: "pointer" }}
+                        style={{
+                          border: "1px solid #10b981",
+                          background: "#ecfdf5",
+                          color: "#065f46",
+                          padding: "6px 10px",
+                          borderRadius: 10,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
                       >
                         Elegir
                       </button>
@@ -631,10 +588,120 @@ export default function App() {
                   ))}
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
-                <button onClick={clearSlot} style={{ border: 0, background: "#f3f4f6", padding: "8px 12px", borderRadius: 10, cursor: "pointer" }}>
+                <button
+                  onClick={clearSlot}
+                  style={{ border: 0, background: "#f3f4f6", padding: "8px 12px", borderRadius: 10, cursor: "pointer" }}
+                >
                   Vaciar posición
                 </button>
                 <div style={{ fontSize: 12, color: "#6b7280" }}>Solo puedes alinear jugadoras del equipo.</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de contacto (nombre/email) */}
+        {contactOpen && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 70,
+            }}
+            onClick={() => setContactOpen(false)}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: 520,
+                background: "#fff",
+                borderRadius: 16,
+                padding: 16,
+                boxShadow: "0 8px 30px rgba(0,0,0,.2)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ marginBottom: 8 }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900 }}>Datos para el envío</h3>
+              </div>
+
+              <div style={{ display: "grid", gap: 10 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>Tu nombre</label>
+                  <input
+                    value={participantName}
+                    onChange={(e) => setParticipantName(e.target.value)}
+                    placeholder="Ej. Laura Pérez"
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: "1px solid #d1d5db",
+                      height: 34, // un poco más bajo
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>Tu email</label>
+                  <input
+                    type="email"
+                    value={participantEmail}
+                    onChange={(e) => setParticipantEmail(e.target.value)}
+                    placeholder="tu@email.com"
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: "1px solid #d1d5db",
+                      height: 34, // un poco más bajo
+                    }}
+                  />
+                </div>
+
+                {/* Honeypot anti-bots */}
+                <div style={{ display: "none" }} aria-hidden>
+                  <label>Deja esto vacío</label>
+                  <input value={botField} onChange={(e) => setBotField(e.target.value)} />
+                </div>
+              </div>
+
+              <div style={{ marginTop: 12, fontSize: 12, color: "#6b7280" }}>
+                Se enviará una copia del equipo que elijas al email indicado.
+              </div>
+
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
+                <button
+                  onClick={() => setContactOpen(false)}
+                  style={{
+                    border: 0,
+                    background: "#f3f4f6",
+                    padding: "8px 12px",
+                    borderRadius: 10,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmAndSend}
+                  disabled={sending}
+                  style={{
+                    border: 0,
+                    background: sending ? "#6b7280" : "#111827",
+                    color: "#fff",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    cursor: sending ? "not-allowed" : "pointer",
+                    fontWeight: 800,
+                  }}
+                >
+                  {sending ? "Enviando..." : "Confirmar y enviar"}
+                </button>
               </div>
             </div>
           </div>
