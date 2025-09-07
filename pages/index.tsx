@@ -6,10 +6,10 @@ type Role = "PT" | "DF" | "MC" | "DL";
 
 const POS: Role[] = ["PT", "DF", "MC", "DL"];
 const POS_COLORS: Record<Role, string> = {
-  PT: "#f59e0b", // ámbar
-  DF: "#3b82f6", // azul
-  MC: "#10b981", // verde
-  DL: "#ef4444", // rojo
+  PT: "#f59e0b",
+  DF: "#3b82f6",
+  MC: "#10b981",
+  DL: "#ef4444",
 };
 
 const FORMATIONS = [
@@ -165,12 +165,13 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
           {rows.map((row, idx) => {
             const n = row.players.length || 1;
             const colWidth = Math.max(24, Math.floor(100 / n) - 2);
-            const smallNames = n >= 3; // <-- cuando hay 3 en la misma fila, usar 13px
+            // Tamaño del nombre por número de jugadoras en la fila
+            const nameSize = n === 3 ? 13 : n === 2 ? 15 : 16;
+
             return (
               <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
                 {row.players.map((slot, i) => {
                   const hasPlayer = !!slot.player;
-                  const isCaptain = !!slot.isCaptain;
                   return (
                     <button
                       key={i}
@@ -196,31 +197,27 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                             <RoleDot role={slot.role} />
                           </div>
 
-                          {/* Nombre centrado */}
+                          {/* Nombre EXACTAMENTE centrado */}
                           <div
                             style={{
-                              height: "100%",
-                              width: "100%",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              textAlign: "center",
+                              position: "absolute",
+                              inset: 0,
+                              display: "grid",
+                              placeItems: "center",
                               padding: "0 8px",
+                              pointerEvents: "none",
+                              textAlign: "center",
                             }}
                           >
                             <span
                               title={slot.player!.name}
                               style={{
-                                display: "block",
-                                width: "100%",
-                                maxWidth: "100%",
-                                fontSize: smallNames ? 13 : 16, // <-- 13px si hay 3 en la fila
+                                fontSize: nameSize,
                                 fontWeight: 800,
                                 lineHeight: 1.25,
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                color: isCaptain ? "#111827" : "#111827", // sin color dorado
+                                wordBreak: "break-word",
+                                whiteSpace: "normal",
+                                color: "#111827",
                               }}
                             >
                               {slot.player!.name}
@@ -264,9 +261,9 @@ function CaptainPicker({
         marginBottom: 16,
       }}
     >
-      <strong style={{ fontSize: 14, display: "block", marginBottom: 6 }}>Selecciona capitana</strong>
+      <strong style={{ fontSize: 14, display: "block" }}>Selecciona capitana</strong>
       <div style={{ fontSize: 12, color: "#6b7280" }}>(los puntos de la capitana se multiplican x2)</div>
-      <div style={{ marginTop: 10, fontSize: 13, color: "#6b7280" }}>Aún no has elegido jugadoras.</div>
+      <div style={{ marginTop: 8, fontSize: 13, color: "#6b7280" }}>Aún no has elegido jugadoras.</div>
     </section>
   );
 
@@ -281,11 +278,8 @@ function CaptainPicker({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <div>
-          <strong style={{ fontSize: 14, display: "block" }}>Selecciona capitana</strong>
-          <div style={{ fontSize: 12, color: "#6b7280" }}>(los puntos de la capitana se multiplican x2)</div>
-        </div>
-        {/* (Quitado el texto "Capitana: ...") */}
+        <strong style={{ fontSize: 14 }}>Selecciona capitana</strong>
+        {/* quitado el mini 'Capitana: ...' */}
       </div>
 
       <div role="radiogroup" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -314,11 +308,12 @@ function CaptainPicker({
             >
               <RoleDot role={role} size={22} />
               <span style={{ fontSize: 13 }}>{byId[id].name}</span>
-              {/* sin "C" visible */}
+              {/* sin 'C' extra */}
             </button>
           );
         })}
       </div>
+      <div style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>(los puntos de la capitana se multiplican x2)</div>
     </section>
   );
 }
@@ -383,13 +378,11 @@ export default function App() {
     [lineup]
   );
 
-  // Si no hay jugadoras, limpia capitana
   React.useEffect(() => {
     const anySelected = Object.values(lineup).some((arr) => arr.some(Boolean));
     if (!anySelected && captainId !== null) setCaptainId(null);
   }, [lineup, captainId]);
 
-  // Filas del campo
   const rows = React.useMemo(() => {
     const displayOrder: Role[] = ["DL", "MC", "DF", "PT"].filter((r) => (counts as any)[r] > 0) as Role[];
     return displayOrder.map((role) => ({
@@ -440,7 +433,7 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: "#eef2f7", color: "#111827" }}>
       <div style={{ maxWidth: 1040, margin: "0 auto", padding: 16 }}>
-        {/* Header (sin textos extra) */}
+        {/* Header */}
         <header
           style={{
             background: "#0f172a",
@@ -467,7 +460,7 @@ export default function App() {
 
         {/* Formación 3×3 */}
         <section
-          style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 8 }}
+          style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16, marginBottom: 6 }}
         >
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
             {FORMATIONS.map((f) => (
@@ -478,7 +471,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* Subtítulo centrado entre selector y campo */}
+        {/* Subtítulo bajo el selector */}
         <div style={{ textAlign: "center", fontSize: 13, color: "#6b7280", marginBottom: 10 }}>
           Selecciona tu formación y escoge hasta 5 jugadoras.
         </div>
@@ -496,7 +489,7 @@ export default function App() {
           setCaptainId={setCaptainId}
         />
 
-        {/* Botón enviar (abre modal de datos) */}
+        {/* Botón enviar (abre modal) */}
         <section
           style={{
             background: "#fff",
@@ -644,12 +637,12 @@ export default function App() {
                     placeholder="Ej. Laura Pérez"
                     style={{
                       width: "90%",            // <-- más estrecho
-                      maxWidth: 420,
                       margin: "0 auto",        // centrado
                       padding: "8px 10px",
                       borderRadius: 10,
                       border: "1px solid #d1d5db",
                       height: 36,
+                      display: "block",
                     }}
                   />
                 </div>
@@ -662,12 +655,12 @@ export default function App() {
                     placeholder="tu@email.com"
                     style={{
                       width: "90%",            // <-- más estrecho
-                      maxWidth: 420,
                       margin: "0 auto",        // centrado
                       padding: "8px 10px",
                       borderRadius: 10,
                       border: "1px solid #d1d5db",
                       height: 36,
+                      display: "block",
                     }}
                   />
                 </div>
