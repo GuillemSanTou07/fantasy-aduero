@@ -170,7 +170,7 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
               <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
                 {row.players.map((slot, i) => {
                   const hasPlayer = !!slot.player;
-                  const isCaptain = !!slot.isCaptain; // SOLO dorado si es capitana
+                  const isCaptain = !!slot.isCaptain; // destacar sin fondo dorado
                   return (
                     <button
                       key={i}
@@ -181,12 +181,13 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                         minHeight: 104,
                         borderRadius: 16,
                         border: hasPlayer ? `2px solid ${POS_COLORS[slot.role]}` : "2px dashed rgba(255,255,255,.7)",
-                        background: isCaptain ? "#fde68a" : hasPlayer ? "#fff" : "rgba(255,255,255,.10)",
+                        background: hasPlayer ? "#fff" : "rgba(255,255,255,.10)",
                         color: hasPlayer ? "#111827" : "#fff",
                         padding: 12,
                         cursor: "pointer",
+                        // Anillo exterior ámbar para la capitana (sin cambiar el fondo)
                         boxShadow: isCaptain
-                          ? "0 2px 10px rgba(245,158,11,.35)"
+                          ? "0 0 0 3px #f59e0b, 0 2px 6px rgba(0,0,0,.08)"
                           : hasPlayer
                           ? "0 2px 6px rgba(0,0,0,.08)"
                           : "none",
@@ -199,6 +200,32 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                           <div style={{ position: "absolute", top: -12, left: -12 }}>
                             <RoleDot role={slot.role} />
                           </div>
+
+                          {/* Insignia C arriba-derecha SOLO si capitana */}
+                          {isCaptain && (
+                            <span
+                              title="Capitana"
+                              style={{
+                                position: "absolute",
+                                top: -12,
+                                right: -12,
+                                width: 26,
+                                height: 26,
+                                borderRadius: 999,
+                                background: "#ffffff",
+                                border: "2px solid #f59e0b",
+                                color: "#b45309",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontWeight: 900,
+                                fontSize: 12,
+                                boxShadow: "0 2px 8px rgba(245,158,11,.25)",
+                              }}
+                            >
+                              C
+                            </span>
+                          )}
 
                           {/* Nombre centrado */}
                           <div
@@ -285,15 +312,31 @@ function CaptainPicker({
                 padding: "8px 10px",
                 borderRadius: 999,
                 border: active ? "2px solid #f59e0b" : "1px solid #e5e7eb",
-                background: active ? "#fde68a" : "#fff",
+                background: active ? "#fff" : "#fff",
                 fontWeight: 800,
                 cursor: "pointer",
-                boxShadow: active ? "0 2px 8px rgba(245,158,11,.25)" : "none",
+                boxShadow: active ? "0 0 0 3px rgba(245,158,11,.25)" : "none",
               }}
               title={`Hacer capitana a ${byId[id].name}`}
             >
               <RoleDot role={role} size={22} />
               <span style={{ fontSize: 13 }}>{byId[id].name}</span>
+              {active && (
+                <span
+                  style={{
+                    marginLeft: 4,
+                    fontSize: 11,
+                    fontWeight: 900,
+                    padding: "2px 6px",
+                    borderRadius: 999,
+                    border: "1px solid #f59e0b",
+                    color: "#b45309",
+                    background: "#fff",
+                  }}
+                >
+                  C
+                </span>
+              )}
             </button>
           );
         })}
@@ -335,7 +378,6 @@ export default function App() {
   function choosePlayer(id: number) {
     setLineup((prev) => {
       const next: Record<Role, Array<number | null>> = { ...prev, [modal!.role]: [...prev[modal!.role]] } as any;
-      // Evitar duplicados
       POS.forEach((r) => {
         next[r] = next[r].map((x) => (x === id ? null : x));
       });
@@ -363,7 +405,7 @@ export default function App() {
     [lineup]
   );
 
-  // Si no hay ninguna jugadora en el campo, no puede haber capitana marcada (evita dorado inicial)
+  // Si no hay ninguna jugadora en el campo, limpia capitana (evita resalto accidental)
   React.useEffect(() => {
     const anySelected = Object.values(lineup).some((arr) => arr.some(Boolean));
     if (!anySelected && captainId !== null) setCaptainId(null);
@@ -383,7 +425,6 @@ export default function App() {
     }));
   }, [counts, lineup, captainId]);
 
-  /** Clic en Enviar selección -> abre modal de contacto si está todo OK */
   function handleClickEnviar() {
     const needed = (counts.PT + counts.DF + counts.MC + counts.DL) as number;
     const chosen = Object.values(lineup).flat().filter(Boolean).length;
@@ -478,7 +519,7 @@ export default function App() {
           setCaptainId={setCaptainId}
         />
 
-        {/* Botón enviar (los campos van en modal) */}
+        {/* Botón enviar (modal para datos) */}
         <section
           style={{
             background: "#fff",
