@@ -170,7 +170,7 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
               <div key={idx} style={{ display: "flex", justifyContent: "center", gap: 12 }}>
                 {row.players.map((slot, i) => {
                   const hasPlayer = !!slot.player;
-                  const bg = slot.isCaptain ? "#fde68a" : hasPlayer ? "#fff" : "rgba(255,255,255,.10)";
+                  const isCaptain = !!slot.isCaptain; // SOLO dorado si es capitana
                   return (
                     <button
                       key={i}
@@ -181,11 +181,11 @@ function Pitch({ rows }: { rows: Array<{ role: Role; players: Slot[] }> }) {
                         minHeight: 104,
                         borderRadius: 16,
                         border: hasPlayer ? `2px solid ${POS_COLORS[slot.role]}` : "2px dashed rgba(255,255,255,.7)",
-                        background: bg,
+                        background: isCaptain ? "#fde68a" : hasPlayer ? "#fff" : "rgba(255,255,255,.10)",
                         color: hasPlayer ? "#111827" : "#fff",
                         padding: 12,
                         cursor: "pointer",
-                        boxShadow: slot.isCaptain
+                        boxShadow: isCaptain
                           ? "0 2px 10px rgba(245,158,11,.35)"
                           : hasPlayer
                           ? "0 2px 6px rgba(0,0,0,.08)"
@@ -363,6 +363,12 @@ export default function App() {
     [lineup]
   );
 
+  // Si no hay ninguna jugadora en el campo, no puede haber capitana marcada (evita dorado inicial)
+  React.useEffect(() => {
+    const anySelected = Object.values(lineup).some((arr) => arr.some(Boolean));
+    if (!anySelected && captainId !== null) setCaptainId(null);
+  }, [lineup, captainId]);
+
   // Filas del campo
   const rows = React.useMemo(() => {
     const displayOrder: Role[] = ["DL", "MC", "DF", "PT"].filter((r) => (counts as any)[r] > 0) as Role[];
@@ -472,7 +478,7 @@ export default function App() {
           setCaptainId={setCaptainId}
         />
 
-        {/* Botón enviar (los campos ahora van en modal) */}
+        {/* Botón enviar (los campos van en modal) */}
         <section
           style={{
             background: "#fff",
