@@ -16,7 +16,7 @@ const PLAYERS = new Map<number, string>([
   [1, "Ari Rodríguez"], [2, "Paula Díaz"], [3, "Ana García"], [4, "Ana Fernández"],
   [5, "Nata Martín"], [6, "Celia Huon"], [7, "Paula Escola"], [8, "Judith Antón"],
   [9, "Noemi Antón"], [10, "María Alonso"], [11, "Yaiza García"], [12, "Andrea Hernández"],
-  [13, "Jasmine Sayagués"], [14, "Alba Muñiz"], [15, "Carla Díez"], [16, "Leyre Ramos"], [17, "[Geraldine Mahecha"],
+  [13, "Jasmine Sayagués"], [14, "Alba Muñiz"], [15, "Carla Díez"], [16, "Leyre Ramos"], [17, "Geraldine Mahecha"],
 ]);
 
 // ===== Render helpers (alineación sobre "campo") =====
