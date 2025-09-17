@@ -14,9 +14,9 @@ type Body = {
 // Jugadoras
 const PLAYERS = new Map<number, string>([
   [1, "Ari Rodríguez"], [2, "Paula Díaz"], [3, "Ana García"], [4, "Ana Fernández"],
-  [5, "Nata Martín"], [6, "Celia Huon"], [7, "Paula Escola"], [8, "Judith Antón"],
+  [5, "Natalia Martín"], [6, "Celia Huon"], [7, "Paula Escola"], [8, "Judith Antón"],
   [9, "Noemi Antón"], [10, "María Alonso"], [11, "Yaiza García"], [12, "Andrea Hernández"],
-  [13, "Jasmine Sayagués"], [14, "Alba Muñiz"], [15, "Carla Díez"], [16, "Leyre Ramos"], [17, "Geraldine Mahecha"],
+  [13, "Jasmine Zarza"], [14, "Alba Muñiz"], [15, "Carla Díez"], [16, "Leyre Ramos"], [17, "Geraldine Mahecha"],
 ]);
 
 // ===== Render helpers (alineación sobre "campo") =====
@@ -113,7 +113,7 @@ function buildParticipantHtml(b: Body) {
         <!-- Mensajes planos (no citados) -->
         <p style="margin:16px 0 6px;">
           📢 <strong>Resultados y clasificación:</strong>
-          se publicarán en Instagram <span style="white-space:nowrap">@fansamigosdelduero</span>.
+          se publicarán en Instagram <span style="white-space:nowrap">@amigosdelduero_fans</span>.
         </p>
         <p style="margin:0 0 12px;">
           ℹ️ <strong>Reglas:</strong> un equipo por jornada. Si envías varios equipos,
