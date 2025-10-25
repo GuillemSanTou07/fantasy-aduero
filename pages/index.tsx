@@ -43,7 +43,9 @@ const PLAYERS: Player[] = [
   { id: 14, name: "Alba Muñiz", roles: ["MC"] },
   { id: 15, name: "Carla Diez", roles: ["MC"] },
   { id: 16, name: "Leyre Ramos", roles: ["MC"] },
-  { id: 17, name: "Geraldine Mahecha", roles: ["DL"] },
+  { id: 17, name: "Geraldine Mahecha", roles: ["DF"] },
+  { id: 18, name: "Abril Garrido", roles: ["MC", "DL"] },
+  { id: 19, name: "Irene Hernández", roles: ["DL"] },
 ];
 
 const byId = Object.fromEntries(PLAYERS.map((p) => [p.id, p])) as Record<number, Player>;
